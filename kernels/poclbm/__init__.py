@@ -120,7 +120,7 @@ class MiningKernel(object):
         help='Size of the nonce buffer')
     
     # This gets updated automatically by SVN.
-    REVISION = int('$Rev: 153 $'[6:-2])
+    REVISION = int('$Rev$'[6:-2])
     
     def __init__(self, interface):
         platforms = cl.get_platforms()

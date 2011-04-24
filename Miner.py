@@ -32,7 +32,7 @@ class Miner(object):
     """The main managing class for the miner itself."""
     
     # This gets updated automatically by SVN.
-    REVISION = int('$Rev: 1 $'[6:-2])
+    REVISION = int('$Rev$'[6:-2])
     
     def __init__(self):
         self.logger = None
