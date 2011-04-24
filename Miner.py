@@ -33,6 +33,7 @@ class Miner(object):
     
     # This gets updated automatically by SVN.
     REVISION = int('$Rev$'[6:-2])
+    VERSION = 'r%s' % self.REVISION
     
     def __init__(self):
         self.logger = None
@@ -97,7 +98,7 @@ class Miner(object):
         # user's desired name for this miner anyway.
         
         self.connection.setVersion(
-            'phoenix', 'Phoenix Miner', 'r%s' % self.REVISION)
+            'phoenix', 'Phoenix Miner', self.VERSION)
         system = platform.system() + ' ' + platform.version()
         self.connection.setMeta('os', system)
         
