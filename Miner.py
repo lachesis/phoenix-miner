@@ -33,7 +33,7 @@ class Miner(object):
     
     # This gets updated automatically by SVN.
     REVISION = int('$Rev$'[6:-2])
-    VERSION = 'r%s' % self.REVISION
+    VERSION = 'r%s' % REVISION
     
     def __init__(self):
         self.logger = None
