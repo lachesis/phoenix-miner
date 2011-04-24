@@ -176,7 +176,7 @@ class RPCClient(ClientBase):
         
         self._startLongPoll()
     
-    def _readHeaders(self, response):
+    def _readHeaders(self, response, rpc):
             longpoll = None
             for k,v in response.headers.getAllRawHeaders():
                 if k.lower() == 'x-long-polling':
@@ -190,7 +190,8 @@ class RPCClient(ClientBase):
                         if block != self.block:
                             self.runCallback('block', block)
                             self.block = block
-            self._setLongPollingPath(longpoll)
+            if rpc:
+                self._setLongPollingPath(longpoll)
     
     def _startRequest(self, rpc=True):
         """Fires a getwork request at the server. The rpc argument indicates
@@ -221,11 +222,9 @@ class RPCClient(ClientBase):
             d = defer.Deferred()
             response.deliverBody(BodyLoader(d))
             d.addCallback(lambda x: self._processResponse(x, not rpc))
-            if rpc:
-                # RPC responses may have headers that we are interested in
-                # Headers are not read until after the response is processed, so
-                # that application callbacks are in a sensible order.
-                d.addCallback(lambda x: self._readHeaders(response) or x)
+            # Headers are not read until after the response is processed,
+            # so that application callbacks are in a sensible order.
+            d.addCallback(lambda x: self._readHeaders(response, rpc) or x)
             return d
         d.addCallback(callback)
         d.addErrback(lambda x: self._failure())
