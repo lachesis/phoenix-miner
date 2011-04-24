@@ -49,14 +49,13 @@ class CommandLineOptions(object):
         self._parse()
     
     def _parse(self):
-        parser = OptionParser(usage="%prog [options] server_url")
+        parser = OptionParser(usage="%prog -u URL [-k kernel] [kernel params]")
         parser.add_option("-v", "--verbose", action="store_true",
             dest="verbose", default=False, help="show debug messages")
         parser.add_option("-k", "--kernel", dest="kernel", default="poclbm",
             help="the name of the kernel to use")
-        parser.add_option("-o", "--option", action="callback", nargs=1,
-            callback=self._kernelOption, metavar="VAR=VALUE", 
-            help="Kernel arguments, usage: -o VAR=VALUE")
+        parser.add_option("-u", "--url", dest="url", default=None,
+            help="the URL of the mining server to work for [REQUIRED]")
         parser.add_option("-q", "--queuesize", dest="queuesize", type="int",
             default=1, help="how many work units to keep queued at all times")
         parser.add_option("-a", "--avgsamples", dest="avgsamples", type="int",
@@ -65,19 +64,22 @@ class CommandLineOptions(object):
         
         self.parsedSettings, args = parser.parse_args()
         
-        if len(args) < 1:
-            print("You need to specify a mining server!")
+        if self.parsedSettings.url is None:
+            parser.print_usage()
             sys.exit()
         else:
-            self.url = args[0]
+            self.url = self.parsedSettings.url
+        
+        for arg in args:
+            self._kernelOption(arg)
     
     def getQueueSize(self):
         return self.parsedSettings.queuesize
     def getAvgSamples(self):
         return self.parsedSettings.avgsamples
     
-    def _kernelOption(self, option, opt_str, value, parser):
-        pair = parser.rargs.pop(0).split('=',1)
+    def _kernelOption(self, arg):
+        pair = arg.split('=',1)
         if len(pair) < 2:
             pair.append(None)
         var, value = tuple(pair)

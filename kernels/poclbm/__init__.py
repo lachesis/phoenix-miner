@@ -160,7 +160,7 @@ class MiningKernel(object):
             (self.PLATFORM is None and len(platforms) > 1):
             self.interface.log(
                 'Wrong platform or more than one OpenCL platform found, '
-                'use -o PLATFORM=ID to select one of the following\n',
+                'use PLATFORM=ID to select one of the following\n',
                 False, True)
             
             for i,p in enumerate(platforms):
@@ -168,6 +168,8 @@ class MiningKernel(object):
             
             # Since the platform is invalid, we can't mine.
             self.interface.fatal()
+        elif self.PLATFORM is None:
+            self.PLATFORM = 0
             
         devices = platforms[self.PLATFORM].get_devices()
         
@@ -176,7 +178,7 @@ class MiningKernel(object):
             (self.DEVICE is None and len(devices) > 1):
             self.interface.log(
                 'No device specified or device not found, '
-                'use -o DEVICE=ID to specify one of the following\n',
+                'use DEVICE=ID to specify one of the following\n',
                 False, True)
             
             for i,d in enumerate(devices):
@@ -184,6 +186,8 @@ class MiningKernel(object):
         
             # Since the device selection is invalid, we can't mine.
             self.interface.fatal()
+        elif self.DEVICE is None:
+            self.DEVICE = 0
         
         self.device = devices[self.DEVICE]
         
