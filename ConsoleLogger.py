@@ -43,7 +43,7 @@ def formatNumber(n):
 class ConsoleLogger(object):
     """This class will handle printing messages to the console."""
     
-    TIME_FORMAT = '%d/%m/%Y %H:%M:%S'
+    TIME_FORMAT = '[%d/%m/%Y %H:%M:%S]'
     
     UPDATE_TIME = 1.0
     
