@@ -259,18 +259,20 @@ __kernel void search(	const uint state0, const uint state1, const uint state2, c
 	E = E + (rotr(B, 6) ^ rotr(B, 11) ^ rotr(B, 25)) + (D ^ (B & (C ^ D))) + K[59] + W11; A = A + E;
 	W12 = W12 + (rotr(W13, 7) ^ rotr(W13, 18) ^ (W13 >> 3U)) + W5 + (rotr(W10, 17) ^ rotr(W10, 19) ^ (W10 >> 10U)); 
 	H = H + D + (rotr(A, 6) ^ rotr(A, 11) ^ rotr(A, 25)) + (C ^ (A & (B ^ C))) + K[60] + W12;
-
+	
+	H+=0x5be0cd19U;
+	
 #ifdef VECTORS
-	if (H.x==0xa41f32e7U)
+	if (H.x==0)
 	{
 		output[OUTPUT_SIZE] = output[nonce.x & OUTPUT_MASK] = nonce.x;
 	}
-	else if (H.y==0xa41f32e7U)
+	else if (H.y==0)
 	{
 		output[OUTPUT_SIZE] = output[nonce.y & OUTPUT_MASK] = nonce.y;
 	}
 #else
-	if (H==0xa41f32e7U)
+	if (H==0)
 	{
 		output[OUTPUT_SIZE] = output[nonce & OUTPUT_MASK] = nonce;
 	}
