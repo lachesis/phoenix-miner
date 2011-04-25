@@ -31,6 +31,7 @@ from twisted.internet import reactor
 from minerutil.Midstate import calculateMidstate
 from QueueReader import QueueReader
 from KernelInterface import *
+from BFIPatcher import *
 
 class KernelData(object):
     """This class is a container for all the data required for a single kernel 
@@ -118,6 +119,9 @@ class MiningKernel(object):
     WORKSIZE = KernelOption(
         'WORKSIZE', int, default=None, advanced=True,
         help='The worksize to use when executing CL kernels.')
+    BFI_INT = KernelOption(
+        'BFI_INT', bool, default=False, advanced=True,
+        help='Use the BFI_INT instruction for AMD/ATI GPUs.')
     OUTPUT_SIZE = KernelOption(
         'OUTPUTSIZE', int, default=0x20, advanced=True,
         help='Size of the nonce buffer')
@@ -195,12 +199,12 @@ class MiningKernel(object):
         self.device = devices[self.DEVICE]
         
         # We need the appropriate kernel for this device...
-        try:
-            self.loadKernel(self.device)
-        except KeyboardInterrupt:
-            sys.exit()
-        except Exception:
-            self.interface.fatal("Failed to load OpenCL kernel!")
+        #try:
+        self.loadKernel(self.device)
+        #except KeyboardInterrupt:
+            #sys.exit()
+        #except Exception:
+            #self.interface.fatal("Failed to load OpenCL kernel!")
         
         # Initialize a command queue to send commands to the device, and a
         # buffer to collect results in...
@@ -209,9 +213,9 @@ class MiningKernel(object):
         self.output_buf = cl.Buffer(
             self.context, cl.mem_flags.WRITE_ONLY | cl.mem_flags.USE_HOST_PTR,
             hostbuf=self.output)
-        
-        self.applyMeta()
     
+        self.applyMeta()
+        
     def applyMeta(self):
         """Apply any kernel-specific metadata."""
         self.interface.setMeta('kernel', 'poclbm r%s' % self.REVISION)
@@ -235,6 +239,13 @@ class MiningKernel(object):
         # bitwise rotation (required for SHA-256) much faster.
         if (device.extensions.find('cl_amd_media_ops') != -1):
             self.defines += ' -DBITALIGN'
+            #enable the expierimental BFI_INT instruction optimization
+            if self.BFI_INT:
+                self.defines += ' -DBFI_INT'
+        else:
+            #since BFI_INT requires cl_amd_media_ops, disable it
+            if self.BFI_INT:
+                self.BFI_INT = False
         
         # Locate and read the OpenCL source code in the kernel's directory.
         kernelFileDir, pyfile = os.path.split(__file__)
@@ -266,22 +277,40 @@ class MiningKernel(object):
             if binary is None:
                 self.kernel = cl.Program(
                     self.context, kernel).build(self.defines)
+                 
+                #apply BFI_INT if enabled
+                if self.BFI_INT:
+                    #patch the binary output from the compiler
+                    patcher = BFIPatcher(self.interface)
+                    binaryData = patcher.patch(self.kernel.binaries[0])
+                    
+                    self.interface.debug("Applied BFI_INT patch")
+                    
+                    #reload the kernel with the patched binary
+                    self.kernel = cl.Program(
+                        self.context, [device],
+                        [binaryData]).build(self.defines)
+                
+                #write the kernel binaries to file
                 binaryW = open(fileName, 'wb')
                 binaryW.write(self.kernel.binaries[0])
                 binaryW.close()
             else:
-                binarydata = binary.read()
+                binaryData = binary.read()
                 self.kernel = cl.Program(
-                    self.context, [device], [binarydata]).build(self.defines)
-                if self.kernel.binaries[0] == binarydata:
+                    self.context, [device], [binaryData]).build(self.defines)
+                if self.kernel.binaries[0] == binaryData:
                     self.interface.debug("Loaded cached kernel")
                 else:
                     self.interface.debug("Failed to load cached kernel")
                     
         except cl.LogicError:
             self.interface.fatal("Failed to compile OpenCL kernel!")
+        except PatchError:
+            self.interface.fatal('Failed to patch kernel!')
         finally:
             if binary: binary.close()
+       
         
         # If the user didn't specify their own worksize, use the maxium
         # supported by the device.
@@ -298,7 +327,7 @@ class MiningKernel(object):
                 self.WORKSIZE = 1 << int(math.floor(math.log(X)/math.log(2)))
             
         self.interface.setWorkFactor(self.WORKSIZE)
-    
+        
     def start(self):
         """Mines out a nonce range, returning a Deferred which will be fired
         with a Python list of Python ints, indicating which nonces meet the
