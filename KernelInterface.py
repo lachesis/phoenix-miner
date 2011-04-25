@@ -152,6 +152,8 @@ class KernelInterface(object):
             d.addCallback(callback)
             return True
         else:
+            self.miner.logger.reportDebug("Result didn't meet full "
+                   "difficulty, not sending")
             return False
     
     def debug(self, msg):
