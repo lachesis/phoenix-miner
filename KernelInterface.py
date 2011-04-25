@@ -174,7 +174,7 @@ class KernelInterface(object):
         operate.
         """
         if msg is not None:
-            self.miner.logger.log('FATAL kernel error: ' + msg)
+            self.miner.logger.log('FATAL kernel error: ' + msg, False)
         if reactor.running:
             reactor.stop()
         os._exit(0)
