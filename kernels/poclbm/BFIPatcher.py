@@ -69,8 +69,7 @@ class BFIPatcher(object):
                 inst ^=  (0x0001a00000000000 ^ 0x0000c00000000000) # BFI_INT
             output += struct.pack('Q', inst)
         self.interface.debug('BFI-patched %d instructions...' % nPatched)
-        #reset this limit to 60
-        if nPatched < 1:
+        if nPatched < 60:
             self.interface.debug('Patch safety threshold not met!')
             raise PatchError()
         return output
