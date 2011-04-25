@@ -66,7 +66,7 @@ class WorkQueue(object):
         self.queueSize = options.getQueueSize()
         self.logger = options.makeLogger(self)
         
-        self.queue = deque()
+        self.queue = deque('', self.queueSize)
         self.deferredQueue = deque()
         self.currentUnit = None
         self.requestPending = False
@@ -96,10 +96,6 @@ class WorkQueue(object):
         #add new WorkUnit to queue
         if work.data and work.target and work.midstate and work.nonces:
             self.queue.append(work)
-            
-        #if the queue is too long then purge the oldest entry
-        if (len(self.queue)) > (self.queueSize + 1):
-            self.queue.popleft()
         
         #if the queue is too short request more work
         if (len(self.queue)) < (self.queueSize):

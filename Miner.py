@@ -77,6 +77,7 @@ class Miner(object):
         self.kernel = self.options.makeKernel(KernelInterface(self))
         self.queue = self.options.makeQueue(self)
         
+        #this will need to be changed to add new protocols
         if isinstance(self.connection, MMPClient):
             self.logger.reportType('MMP')
         else:

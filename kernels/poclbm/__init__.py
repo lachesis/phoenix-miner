@@ -119,7 +119,7 @@ class MiningKernel(object):
         'WORKSIZE', int, default=None, advanced=True,
         help='The worksize to use when executing CL kernels.')
     OUTPUT_SIZE = KernelOption(
-        'OUTPUTSIZE', int, default=0x100, advanced=True,
+        'OUTPUTSIZE', int, default=0x20, advanced=True,
         help='Size of the nonce buffer')
     
     # This gets updated automatically by SVN.
@@ -281,11 +281,20 @@ class MiningKernel(object):
         finally:
             if binary: binary.close()
         
-        # If the user didn't specify their own worksize, have OpenCL recommend
-        # one for us.
+        # If the user didn't specify their own worksize, use the maxium
+        # supported by the device.
+        maxSize = self.kernel.search.get_work_group_info(
+                  cl.kernel_work_group_info.WORK_GROUP_SIZE, self.device)
+        
         if self.WORKSIZE is None:
-            self.WORKSIZE = self.kernel.search.get_work_group_info(
-                cl.kernel_work_group_info.WORK_GROUP_SIZE, self.device)
+            self.WORKSIZE = maxSize
+        else:
+            self.WORKSIZE = min(self.WORKSIZE, maxSize)
+            self.WORKSIZE = max(self.WORKSIZE, 1)
+            #if the worksize is not a power of 2, round down to the nearest one
+            if not ((self.WORKSIZE & (self.WORKSIZE - 1)) == 0):   
+                self.WORKSIZE = 1 << int(math.floor(math.log(X)/math.log(2)))
+            
         self.interface.setWorkFactor(self.WORKSIZE)
     
     def start(self):
@@ -313,32 +322,21 @@ class MiningKernel(object):
                             'Hardware problem?')
     
     def mineThread(self):
-        try:
-            for data in self.qr:
-                self.mineRange(data)
-        except SystemExit:
-            return
+        for data in self.qr:
+            self.mineRange(data)
     
     def mineRange(self, data):
         for i in range(data.iterations):
-            try:
-                self.kernel.search(
-                    self.commandQueue, (data.size, ), (self.WORKSIZE, ),
-                    data.state[0], data.state[1], data.state[2], data.state[3],
-                    data.state[4], data.state[5], data.state[6], data.state[7],
-                    data.state2[1], data.state2[2], data.state2[3],
-                    data.state2[5], data.state2[6], data.state2[7],
-                    data.base[i],
-                    data.f[0], data.f[1], data.f[2], data.f[3],
-                    data.f[4], data.f[5], data.f[6], data.f[7],
-                    self.output_buf)
-            except cl.LogicError, e:
-                if 'invalid work item size' in e.args[0]:
-                    reactor.callFromThread(self.interface.fatal,
-                        'Invalid worksize!')
-                    raise SystemExit()
-                else:
-                    raise e
+            self.kernel.search(
+                self.commandQueue, (data.size, ), (self.WORKSIZE, ),
+                data.state[0], data.state[1], data.state[2], data.state[3],
+                data.state[4], data.state[5], data.state[6], data.state[7],
+                data.state2[1], data.state2[2], data.state2[3],
+                data.state2[5], data.state2[6], data.state2[7],
+                data.base[i],
+                data.f[0], data.f[1], data.f[2], data.f[3],
+                data.f[4], data.f[5], data.f[6], data.f[7],
+                self.output_buf)
             cl.enqueue_read_buffer(
                 self.commandQueue, self.output_buf, self.output)
             self.commandQueue.finish()
@@ -348,7 +346,7 @@ class MiningKernel(object):
             # thread for postprocessing and clean the buffer for the next pass.
             if self.output[self.OUTPUT_SIZE]:
                 reactor.callFromThread(self.postprocess, self.output.copy(),
-                    data.nr)
+                data.nr)
             
                 self.output.fill(0)
                 cl.enqueue_write_buffer(
