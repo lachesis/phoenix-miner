@@ -55,12 +55,21 @@ class ConsoleLogger(object):
         self.invalid = 0
         self.lineLength = 0
         self.connectionType = None
+        self.idle = False
     
     def reportRate(self, rate, update=True):
         """Used to tell the logger the current Khash/sec."""
         self.rate = rate
         if update:
             self.updateStatus()
+    
+    #used by WorkQueue to report when the miner is idle
+    def reportIdle(self, idle):
+        #if idle status has changed force an update
+        if self.idle != idle:
+            self.updateStatus(True)
+            
+        self.idle = idle
     
     def reportType(self, type):
         self.connectionType = type
@@ -74,12 +83,13 @@ class ConsoleLogger(object):
         else:
             self.invalid += 1
         
-        hexHash = hash[-8:].encode('hex')
+        hexHash = hash[::-1]
+        hexHash = hexHash[:8].encode('hex')
         if self.verbose:
             self.log('Result ...%s %s' % (hexHash,
                 'accepted' if accepted else 'rejected'))
         else:
-            self.log('Result: %s %s' % (hexHash[:-8],
+            self.log('Result: %s %s' % (hexHash[8:],
                 'accepted' if accepted else 'rejected'))
             
     def reportMsg(self, message):
@@ -102,9 +112,10 @@ class ConsoleLogger(object):
         #only update if last update was more than a second ago
         dt = time.time() - self.lastUpdate
         if force or dt > self.UPDATE_TIME:
+            rate = self.rate if (not self.idle) else 0
             type = " [" + str(self.connectionType) + "]" if self.connectionType is not None else ''
             status = (
-                "[" + formatNumber(self.rate) + "hash/sec] "
+                "[" + formatNumber(rate) + "hash/sec] "
                 "[" + str(self.accepted) + " Accepted] "
                 "[" + str(self.invalid) + " Rejected]" + type)
             self.say(status)

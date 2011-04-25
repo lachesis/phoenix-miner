@@ -92,6 +92,7 @@ class WorkQueue(object):
         
         #clear the idle flag since we just added work to queue
         self.idle = False
+        self.logger.reportIdle(False)
         
         #add new WorkUnit to queue
         if work.data and work.target and work.midstate and work.nonces:
@@ -195,6 +196,7 @@ class WorkQueue(object):
                 if not self.idle:
                     self.logger.reportRate(0, False)
                     self.logger.log("Warning: work queue empty, miner is idle")
+                    self.logger.reportIdle(True)
                     self.idle = True
                 
                 #set up and return deferred

@@ -41,8 +41,6 @@ class KernelData(object):
     def __init__(self, nonceRange, vectors, iterations):
         # Prepare some raw data, converting it into the form that the OpenCL
         # function expects.
-        target = np.array(
-            unpack('IIIIIIII', nonceRange.unit.target), dtype=np.uint32)
         data   = np.array(
             unpack('IIII', nonceRange.unit.data[64:]), dtype=np.uint32)
         
@@ -199,12 +197,12 @@ class MiningKernel(object):
         self.device = devices[self.DEVICE]
         
         # We need the appropriate kernel for this device...
-        #try:
-        self.loadKernel(self.device)
-        #except KeyboardInterrupt:
-            #sys.exit()
-        #except Exception:
-            #self.interface.fatal("Failed to load OpenCL kernel!")
+        try:
+            self.loadKernel(self.device)
+        except KeyboardInterrupt:
+            sys.exit()
+        except Exception:
+            self.interface.fatal("Failed to load OpenCL kernel!")
         
         # Initialize a command queue to send commands to the device, and a
         # buffer to collect results in...
@@ -299,10 +297,6 @@ class MiningKernel(object):
                 binaryData = binary.read()
                 self.kernel = cl.Program(
                     self.context, [device], [binaryData]).build(self.defines)
-                if self.kernel.binaries[0] == binaryData:
-                    self.interface.debug("Loaded cached kernel")
-                else:
-                    self.interface.debug("Failed to load cached kernel")
                     
         except cl.LogicError:
             self.interface.fatal("Failed to compile OpenCL kernel!")
