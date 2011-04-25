@@ -207,15 +207,29 @@ class RPCClient(ClientBase):
         
         # There are some differences between long-poll and RPC, which are
         # sorted out here.
+        method = 'POST' if rpc else 'GET'
+        contentType = ['application/json'] if rpc else []
+        body = GetWorkProducer() if rpc else None
+        if rpc:
+            url = self.baseURL + self.basePath
+        else:
+            parsedLP = urlparse.urlparse(self.longPollPath)
+            parsedBase = urlparse.urlparse(self.baseURL)
+            scheme = parsedLP.scheme or parsedBase.scheme
+            netloc = parsedLP.netloc or parsedBase.netloc
+            path = parsedLP.path
+            query = parsedLP.query
+            url = urlparse.urlunparse((scheme, netloc, path, '', query, ''))
+        
         d = self.agent.request(
-            'POST' if rpc else 'GET',
-            self.baseURL + (self.basePath if rpc else self.longPollPath),
+            method,
+            url,
             Headers(
                 {'User-Agent': [self.version],
                 'Authorization': [self.auth],
-                'Content-Type': ['application/json'] if rpc else [],
+                'Content-Type': contentType,
                 }),
-            GetWorkProducer() if rpc else None)
+            body)
         
         
         def callback(response):
