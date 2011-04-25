@@ -109,7 +109,7 @@ class QueueReader(object):
         
         if self.preprocessor:
             d.addCallback(self.preprocessor)
-        d.addCallback(self.dataQueue.put)
+        d.addCallback(self.dataQueue.put_nowait)
     
     def _shutdown(self):
         """Called when the reactor quits."""
