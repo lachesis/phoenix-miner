@@ -209,12 +209,14 @@ class MiningKernel(object):
         self.output_buf = cl.Buffer(
             self.context, cl.mem_flags.WRITE_ONLY | cl.mem_flags.USE_HOST_PTR,
             hostbuf=self.output)
+        
+        self.applyMeta()
     
-    def applyMeta(self, connection):
-        """Apply any kernel-specific metadata to the connection object."""
-        connection.setMeta('kernel', 'poclbm r%s' % self.REVISION)
-        connection.setMeta('device', self.device.name.replace('\x00',''))
-        connection.setMeta('cores', self.device.max_compute_units)
+    def applyMeta(self):
+        """Apply any kernel-specific metadata."""
+        self.interface.setMeta('kernel', 'poclbm r%s' % self.REVISION)
+        self.interface.setMeta('device', self.device.name.replace('\x00',''))
+        self.interface.setMeta('cores', self.device.max_compute_units)
     
     def loadKernel(self, device):
         """Load the kernel and initialize the device."""

@@ -33,7 +33,7 @@ class Miner(object):
     
     # This gets updated automatically by SVN.
     REVISION = int('$Rev$'[6:-2])
-    VERSION = 'v1.01'
+    VERSION = 'r%s' % REVISION
     
     def __init__(self):
         self.logger = None
@@ -102,9 +102,6 @@ class Miner(object):
             'phoenix', 'Phoenix Miner', self.VERSION)
         system = platform.system() + ' ' + platform.version()
         self.connection.setMeta('os', system)
-        
-        # The kernel knows the rest.
-        self.kernel.applyMeta(self.connection)
     
     def updateAverage(self, rate):
         """Average 'khash' more Khashes into our current sliding window
