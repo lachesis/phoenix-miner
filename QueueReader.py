@@ -60,7 +60,7 @@ class QueueReader(object):
         self.currentData = None
         self.startedAt = None
         
-        reactor.addSystemEventTrigger('during', 'shutdown', self._shutdown)
+        reactor.addSystemEventTrigger('before', 'shutdown', self._shutdown)
         
     def start(self):
         """Called by the kernel when it's actually starting."""
