@@ -21,7 +21,8 @@
 
 import hashlib
 import struct
-from twisted.internet import defer
+import os
+from twisted.internet import defer, reactor
 
 # I'm using this as a sentinel value to indicate that an option has no default;
 # it must be specified.
@@ -174,5 +175,6 @@ class KernelInterface(object):
         """
         if msg is not None:
             self.miner.logger.log('FATAL kernel error: ' + msg)
-        raise SystemExit()
+        reactor.stop()
+        os._exit(0)
     

@@ -115,6 +115,9 @@ class MiningKernel(object):
         'AGGRESSION', int, default=1, advanced=True,
         help='Exponential factor indicating how much work to run '
         'per OpenCL execution')
+    WORKSIZE = KernelOption(
+        'WORKSIZE', int, default=None, advanced=True,
+        help='The worksize to use when executing CL kernels.')
     OUTPUT_SIZE = KernelOption(
         'OUTPUTSIZE', int, default=0x100, advanced=True,
         help='Size of the nonce buffer')
@@ -280,10 +283,10 @@ class MiningKernel(object):
         
         # If the user didn't specify their own worksize, have OpenCL recommend
         # one for us.
-        if True: #self.worksize is None:
-            self.worksize = self.kernel.search.get_work_group_info(
+        if self.WORKSIZE is None:
+            self.WORKSIZE = self.kernel.search.get_work_group_info(
                 cl.kernel_work_group_info.WORK_GROUP_SIZE, self.device)
-            self.interface.setWorkFactor(self.worksize)
+        self.interface.setWorkFactor(self.WORKSIZE)
     
     def start(self):
         """Mines out a nonce range, returning a Deferred which will be fired
@@ -310,21 +313,32 @@ class MiningKernel(object):
                             'Hardware problem?')
     
     def mineThread(self):
-        for data in self.qr:
-            self.mineRange(data)
+        try:
+            for data in self.qr:
+                self.mineRange(data)
+        except SystemExit:
+            return
     
     def mineRange(self, data):
         for i in range(data.iterations):
-            self.kernel.search(
-                self.commandQueue, (data.size, ), (self.worksize, ),
-                data.state[0], data.state[1], data.state[2], data.state[3],
-                data.state[4], data.state[5], data.state[6], data.state[7],
-                data.state2[1], data.state2[2], data.state2[3],
-                data.state2[5], data.state2[6], data.state2[7],
-                data.base[i],
-                data.f[0], data.f[1], data.f[2], data.f[3],
-                data.f[4], data.f[5], data.f[6], data.f[7],
-                self.output_buf)
+            try:
+                self.kernel.search(
+                    self.commandQueue, (data.size, ), (self.WORKSIZE, ),
+                    data.state[0], data.state[1], data.state[2], data.state[3],
+                    data.state[4], data.state[5], data.state[6], data.state[7],
+                    data.state2[1], data.state2[2], data.state2[3],
+                    data.state2[5], data.state2[6], data.state2[7],
+                    data.base[i],
+                    data.f[0], data.f[1], data.f[2], data.f[3],
+                    data.f[4], data.f[5], data.f[6], data.f[7],
+                    self.output_buf)
+            except cl.LogicError, e:
+                if 'invalid work item size' in e.args[0]:
+                    reactor.callFromThread(self.interface.fatal,
+                        'Invalid worksize!')
+                    raise SystemExit()
+                else:
+                    raise e
             cl.enqueue_read_buffer(
                 self.commandQueue, self.output_buf, self.output)
             self.commandQueue.finish()
