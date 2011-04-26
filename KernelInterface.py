@@ -34,7 +34,7 @@ class KernelOption(object):
     """
     
     def __init__(self, name, type, help=None, default=REQUIRED,
-        advanced=False):
+        advanced=False, **kwargs):
         
         self.localValues = {}
         
