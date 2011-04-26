@@ -19,9 +19,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import hashlib
-import struct
 import os
+from struct import pack, unpack
+from hashlib import sha256
 from twisted.internet import defer, reactor
 
 # I'm using this as a sentinel value to indicate that an option has no default;
@@ -134,10 +134,10 @@ class KernelInterface(object):
         return True
  
     def calculateHash(self, range, nonce):
-        staticDataUnpacked = struct.unpack('<' + 'I'*19, range.unit.data[:76])
-        staticData = struct.pack('>' + 'I'*19, *staticDataUnpacked)
-        hashInput = struct.pack('>76sI', staticData, nonce)
-        return hashlib.sha256(hashlib.sha256(hashInput).digest()).digest()
+        staticDataUnpacked = unpack('<' + 'I'*19, range.unit.data[:76])
+        staticData = pack('>' + 'I'*19, *staticDataUnpacked)
+        hashInput = pack('>76sI', staticData, nonce)
+        return sha256(sha256(hashInput).digest()).digest()
     
     def foundNonce(self, range, nonce):
         """Called by kernels when they may have found a nonce."""
@@ -145,7 +145,7 @@ class KernelInterface(object):
         hash = self.calculateHash(range, nonce)
         
         if self.checkTarget(hash, range.unit.target):
-            formattedResult = struct.pack('<76sI', range.unit.data[:76], nonce)
+            formattedResult = pack('<76sI', range.unit.data[:76], nonce)
             d = self.miner.connection.sendResult(formattedResult)
             def callback(accepted):
                 self.miner.logger.reportFound(hash, accepted)

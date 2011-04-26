@@ -21,7 +21,6 @@
 
 import pyopencl as cl
 import numpy as np
-import sys
 import os
 
 from hashlib import md5
@@ -199,8 +198,6 @@ class MiningKernel(object):
         # We need the appropriate kernel for this device...
         try:
             self.loadKernel(self.device)
-        except KeyboardInterrupt:
-            sys.exit()
         except Exception:
             self.interface.fatal("Failed to load OpenCL kernel!")
         

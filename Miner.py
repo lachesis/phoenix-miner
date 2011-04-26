@@ -19,13 +19,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import time
-import struct
-import hashlib
+from time import time
 import platform
 
 from minerutil.MMPProtocol import MMPClient
-
 from KernelInterface import KernelInterface
 
 class Miner(object):
@@ -43,7 +40,7 @@ class Miner(object):
         self.queue = None
         
         self.lastMetaRate = 0.0
-        self.lastRateUpdate = time.time()
+        self.lastRateUpdate = time()
     
     # Connection callbacks...
     def onFailure(self):
@@ -115,6 +112,6 @@ class Miner(object):
         self.logger.reportRate(average)
         
         # Let's not spam the server with rate messages.
-        if self.lastMetaRate+30 < time.time():
+        if self.lastMetaRate+30 < time():
             self.connection.setMeta('rate', average)
-            self.lastMetaRate = time.time()
+            self.lastMetaRate = time()

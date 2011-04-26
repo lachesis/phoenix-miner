@@ -19,8 +19,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import time
 import sys
+from time import time
 from datetime import datetime
 
 def formatNumber(n):
@@ -49,7 +49,7 @@ class ConsoleLogger(object):
     
     def __init__(self, verbose=False):
         self.verbose = verbose
-        self.lastUpdate = time.time() - 1
+        self.lastUpdate = time() - 1
         self.rate = 0
         self.accepted = 0
         self.invalid = 0
@@ -110,7 +110,7 @@ class ConsoleLogger(object):
         
     def updateStatus(self, force=False):
         #only update if last update was more than a second ago
-        dt = time.time() - self.lastUpdate
+        dt = time() - self.lastUpdate
         if force or dt > self.UPDATE_TIME:
             rate = self.rate if (not self.idle) else 0
             type = " [" + str(self.connectionType) + "]" if self.connectionType is not None else ''
@@ -119,7 +119,7 @@ class ConsoleLogger(object):
                 "[" + str(self.accepted) + " Accepted] "
                 "[" + str(self.invalid) + " Rejected]" + type)
             self.say(status)
-            self.lastUpdate = time.time()
+            self.lastUpdate = time()
         
     def say(self, message, newLine=False, hideTimestamp=False):
         #add new line if requested

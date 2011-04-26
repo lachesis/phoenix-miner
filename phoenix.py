@@ -21,10 +21,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import sys
 import imp
+from sys import exit
 from twisted.internet import reactor
 from optparse import OptionParser
+
 import minerutil
 from ConsoleLogger import ConsoleLogger
 from WorkQueue import WorkQueue
@@ -66,7 +67,7 @@ class CommandLineOptions(object):
         
         if self.parsedSettings.url is None:
             parser.print_usage()
-            sys.exit()
+            exit()
         else:
             self.url = self.parsedSettings.url
         
@@ -96,7 +97,7 @@ class CommandLineOptions(object):
                 self.connection = minerutil.openURL(self.url, requester)
             except ValueError, e:
                 print(e)
-                sys.exit()
+                exit()
         return self.connection
     
     def makeKernel(self, requester):
@@ -106,7 +107,7 @@ class CommandLineOptions(object):
                 file, filename, smt = imp.find_module(module, ['kernels'])
             except ImportError:
                 print("Could not locate the specified kernel!")
-                sys.exit()
+                exit()
             kernelModule = imp.load_module(module, file, filename, smt)
             self.kernel = kernelModule.MiningKernel(requester)
         return self.kernel

@@ -19,7 +19,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import time
+from time import time
 from Queue import Queue
 from twisted.internet import reactor, defer
 
@@ -129,7 +129,7 @@ class QueueReader(object):
         """
         
         # If we just completed a range, we should tell the main thread.
-        now = time.time()
+        now = time()
         if self.currentData:
             dt = now - self.startedAt
             reactor.callFromThread(self._ranExecution, dt,

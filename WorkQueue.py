@@ -21,10 +21,7 @@
 
 from minerutil.Midstate import calculateMidstate
 from twisted.internet import defer
-from struct import pack, unpack
 from collections import deque
-
-import numpy as np
 
 """A WorkUnit is a single unit containing 2^32 nonces. A single getWork
 request returns a WorkUnit.
@@ -102,7 +99,6 @@ class WorkQueue(object):
         if (len(self.queue)) < (self.queueSize):
             self.miner.connection.requestWork()
         else:
-            #clear request pending flag
             self.requestPending = False
         
         #check if there are deferred NonceRange requests pending
