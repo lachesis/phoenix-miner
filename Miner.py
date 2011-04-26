@@ -28,7 +28,7 @@ from KernelInterface import KernelInterface
 class Miner(object):
     """The main managing class for the miner itself."""
     
-    # This gets updated automatically by SVN.
+    # This gets updated automatically by SVN. 
     REVISION = int('$Rev$'[6:-2])
     VERSION = 'r%s' % REVISION
     

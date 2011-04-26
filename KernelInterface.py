@@ -54,6 +54,25 @@ class KernelOption(object):
     def __set__(self, instance, value):
         self.localValues[instance] = value
 
+class CoreInterface(object):
+    """An internal class provided for kernels to use when reporting info for
+    one core.
+    
+    Only KernelInterface should create this.
+    """
+    
+    numCores = 0
+    
+    def __init__(self, kernelInterface):
+        self.kernelInterface = kernelInterface
+        CoreInterface.numCores += 1
+    
+    def updateRate(self, rate):
+        """Called by a kernel core to report its current rate."""
+        # Since, right now, all core rates are averaged together in Miner,
+        # we multiply by the total number of cores to get an accurate sum.
+        self.kernelInterface.miner.updateAverage(rate * CoreInterface.numCores)
+        
 class KernelInterface(object):
     """This is an object passed to kernels as an API back to the Phoenix
     framework.
@@ -62,6 +81,7 @@ class KernelInterface(object):
     def __init__(self, miner):
         self.miner = miner
         
+        self._core = None
         self.workFactor = 1
         
     def _getOption(self, name, type, default):
@@ -119,9 +139,19 @@ class KernelInterface(object):
             return self.miner.queue.fetchRange(size, workFactor)
     
     def updateRate(self, rate):
-        """Used by kernels to declare their hashrate."""
+        """Used by kernels to declare their hashrate.
         
-        self.miner.updateAverage(rate)
+        DEPRECATED. Use CoreInterface instead and updateRate on that.
+        """
+        
+        if not self._core:
+            self._core = self.addCore()
+        
+        self._core.updateRate(rate)
+    
+    def addCore(self):
+        """Return a CoreInterface for a new core."""
+        return CoreInterface(self)
     
     def checkTarget(self, hash, target):
         """Utility function that the kernel can use to see if a nonce meets a

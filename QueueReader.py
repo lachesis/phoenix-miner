@@ -37,6 +37,7 @@ class QueueReader(object):
     
     def __init__(self, interface, preprocessor=None, workSizeCallback=None):
         self.interface = interface
+        self.core = interface.addCore()
         self.preprocessor = preprocessor
         self.workSizeCallback = workSizeCallback
         
@@ -76,7 +77,7 @@ class QueueReader(object):
         """
         
         if dt > 0:
-            self.interface.updateRate(int(nr.size/dt/1000))
+            self.core.updateRate(int(nr.size/dt/1000))
         
         self.executionTimeSamples.append(dt)
         self.executionTimeSamples = self.executionTimeSamples[-self.SAMPLES:]
