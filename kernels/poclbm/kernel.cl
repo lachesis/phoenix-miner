@@ -45,13 +45,13 @@ __constant uint K[64] = {
 	#define Ma(x, y, z) amd_bytealign((y), (x | z), (z & x))
 #else
 	#define Ch(x, y, z) (z ^ (x & (y ^ z)))
-	#define Ma(x, y, z) ((y & z) | (x & (y | z)))
+	#define Ma(x, y, z) ((x & z) | (y & (x | z)))
 #endif
 
 // AMD's KernelAnalyzer throws errors compiling the kernel if we use 
 // amd_bytealign on constants with vectors enabled, so we use this to avoid 
 // problems. (this is used 4 times, and likely optimized out by the compiler.)
-#define Ma2(x, y, z) ((y & z) | (x & (y | z)))
+#define Ma2(x, y, z) ((x & z) | (y & (x | z)))
 
 __kernel void search(	const uint state0, const uint state1, const uint state2, const uint state3,
 						const uint state4, const uint state5, const uint state6, const uint state7,
