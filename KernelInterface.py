@@ -103,15 +103,20 @@ class KernelInterface(object):
         
         self.miner.connection.setMeta(var, value)
     
-    def fetchRange(self, size=None):
+    def fetchRange(self, size=None, workFactor=None):
         """Fetch a range from the WorkQueue, optionally specifying a size
         (in nonces) to include in the range.
         """
         
+        # If the kernel didn't specify a specific workFactor, use the default
+        # set via setWorkFactor.
+        if workFactor is None:
+            workFactor = self.workFactor
+        
         if size is None:
-            return self.miner.queue.fetchRange(workFactor=self.workFactor)
+            return self.miner.queue.fetchRange(workFactor=workFactor)
         else:
-            return self.miner.queue.fetchRange(size, self.workFactor)
+            return self.miner.queue.fetchRange(size, workFactor)
     
     def updateRate(self, rate):
         """Used by kernels to declare their hashrate."""
@@ -164,7 +169,7 @@ class KernelInterface(object):
     
     def log(self, msg, withTimestamp=True, withIdentifier=True):
         """Log some general kernel information to the console."""
-        self.miner.logger.say(msg, True, not withTimestamp)
+        self.miner.logger.log(msg, True, not withTimestamp)
     
     def error(self, msg=None):
         """The kernel has an issue that requires user attention."""

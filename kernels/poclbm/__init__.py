@@ -89,9 +89,6 @@ class KernelData(object):
             rotr(self.state2[5], 13) ^ rotr(self.state2[5], 22)) +
             ((self.state2[5] & self.state2[6]) | (self.state2[7] &
             (self.state2[5] | self.state2[6]))))
-    
-    def getHashCount(self):
-        return self.nr.size
         
         
 class MiningKernel(object):

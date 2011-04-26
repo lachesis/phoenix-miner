@@ -48,9 +48,6 @@ class NonceRange(object):
         self.unit = unit # The WorkUnit this NonceRange comes from.
         self.base = base # The base nonce.
         self.size = size # How many nonces this NonceRange says to test.
-    
-    def getHashCount(self):
-        return self.size
 
 class WorkQueue(object):
     """A WorkQueue contains WorkUnits and dispatches NonceRanges when requested
@@ -139,7 +136,8 @@ class WorkQueue(object):
             
         #otherwise send whatever is left
         else:
-            nr = NonceRange(self.currentUnit, self.currentUnit.base, noncesLeft)
+            nr = NonceRange(
+                self.currentUnit, self.currentUnit.base, noncesLeft)
             self.currentUnit = None
         
         #return the range
@@ -150,8 +148,8 @@ class WorkQueue(object):
         #make sure size is not too large
         size = min(size, 0x100000000)
 
-        #clamp size to multiple of 256 * workFactor
-        increment = 256 * workFactor
+        #size must be a multiple of workFactor, which must be a multiple of 256
+        increment = 256 * int((workFactor + 255) / 256) #rounded up
         size = increment * int(size / increment)
         
         #make sure size is not too small

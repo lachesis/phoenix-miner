@@ -33,6 +33,8 @@ class QueueReader(object):
     for ... in self.qr:
     """
     
+    SAMPLES = 3
+    
     def __init__(self, interface, preprocessor=None, workSizeCallback=None):
         self.interface = interface
         self.preprocessor = preprocessor
@@ -64,34 +66,34 @@ class QueueReader(object):
         
     def start(self):
         """Called by the kernel when it's actually starting."""
+        self._updateWorkSize(None, None)
         self._requestMore()
     
-    def _ranExecution(self, dt, size):
+    def _ranExecution(self, dt, nr):
         """An internal function called after an execution completes, with the
         time it took. Used to keep track of the time so kernels can use it to
         tune their execution times.
         """
         
         if dt > 0:
-            self.interface.updateRate(int(size/dt/1000))
+            self.interface.updateRate(int(nr.size/dt/1000))
         
         self.executionTimeSamples.append(dt)
-        self.executionTimeSamples = self.executionTimeSamples[-3:]
+        self.executionTimeSamples = self.executionTimeSamples[-self.SAMPLES:]
         
-        if len(self.executionTimeSamples) == 3:
-            self.averageExecutionTime = (self.executionTimeSamples[0] +
-                self.executionTimeSamples[1]) / 2
+        if len(self.executionTimeSamples) == self.SAMPLES:
+            averageExecutionTime = (sum(self.executionTimeSamples) /
+                                    len(self.executionTimeSamples))
 
-            self._updateWorkSize(size)
+            self._updateWorkSize(averageExecutionTime, nr.size)
     
-    def _updateWorkSize(self, size):
+    def _updateWorkSize(self, time, size):
         """An internal function that tunes the executionSize to that specified
         by the workSizeCallback; which is in turn passed the average of the
-        second-to-last and third-to-last execution times.
+        last execution times.
         """
-        if self.workSizeCallback and self.averageExecutionTime is not None:
-            self.executionSize = self.workSizeCallback(
-                self.averageExecutionTime, size)
+        if self.workSizeCallback:
+            self.executionSize = self.workSizeCallback(time, size)
     
     def _requestMore(self):
         """This is used to start the process of making a new item available in
@@ -107,8 +109,20 @@ class QueueReader(object):
         else:
             d = self.interface.fetchRange(self.executionSize)
         
-        if self.preprocessor:
-            d.addCallback(self.preprocessor)
+        def preprocess(nr):
+            # If preprocessing is not necessary, just tuplize right away.
+            if not self.preprocessor:
+                return (nr, nr)
+            
+            d2 = defer.maybeDeferred(self.preprocessor, nr)
+            
+            # Tuplize the preprocessed result.
+            def callback(x):
+                return (x, nr)
+            d2.addCallback(callback)
+            return d2
+        d.addCallback(preprocess)
+        
         d.addCallback(self.dataQueue.put_nowait)
     
     def _shutdown(self):
@@ -132,12 +146,13 @@ class QueueReader(object):
         now = time()
         if self.currentData:
             dt = now - self.startedAt
-            reactor.callFromThread(self._ranExecution, dt,
-                self.currentData.getHashCount())
+            # self.currentData[1] is the un-preprocessed NonceRange.
+            reactor.callFromThread(self._ranExecution, dt, self.currentData[1])
         self.startedAt = now
         
         # Block for more data from the main thread. In 99% of cases, though,
         # there should already be something here.
+        # Note that this comes back with either a tuple, or a StopIteration()
         self.currentData = self.dataQueue.get(True)
         
         # Does the main thread want us to shut down, or pass some more data?
@@ -147,4 +162,5 @@ class QueueReader(object):
         # We just took the only item in the queue. It needs to be restocked.
         reactor.callFromThread(self._requestMore)
         
-        return self.currentData
+        # currentData is actually a tuple, with item 0 intended for the kernel.
+        return self.currentData[0]
