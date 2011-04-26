@@ -169,6 +169,7 @@ class MiningKernel(object):
             
             # Since the platform is invalid, we can't mine.
             self.interface.fatal()
+            return
         elif self.PLATFORM is None:
             self.PLATFORM = 0
             
@@ -187,6 +188,7 @@ class MiningKernel(object):
         
             # Since the device selection is invalid, we can't mine.
             self.interface.fatal()
+            return
         elif self.DEVICE is None:
             self.DEVICE = 0
         
@@ -197,6 +199,7 @@ class MiningKernel(object):
             self.loadKernel(self.device)
         except Exception:
             self.interface.fatal("Failed to load OpenCL kernel!")
+            return
         
         # Initialize a command queue to send commands to the device, and a
         # buffer to collect results in...
@@ -294,8 +297,10 @@ class MiningKernel(object):
                     
         except cl.LogicError:
             self.interface.fatal("Failed to compile OpenCL kernel!")
+            return
         except PatchError:
             self.interface.fatal('Failed to patch kernel!')
+            return
         finally:
             if binary: binary.close()
        
