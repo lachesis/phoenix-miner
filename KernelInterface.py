@@ -68,9 +68,10 @@ class CoreInterface(object):
         CoreInterface.numCores += 1
     
     def updateRate(self, rate):
-        """Called by a kernel core to report its current rate."""
-        # Since, right now, all core rates are averaged together in Miner,
-        # we multiply by the total number of cores to get an accurate sum.
+        """Called by a kernel core to report its current rate.
+        Since, right now, all core rates are averaged together in Miner,
+        we multiply by the total number of cores to get an accurate sum.
+        """
         self.kernelInterface.miner.updateAverage(rate * CoreInterface.numCores)
     
     def getKernelInterface(self):

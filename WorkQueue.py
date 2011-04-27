@@ -88,14 +88,11 @@ class WorkQueue(object):
         work.base = 0
         
         #check if there is a new block, if so reset queue
-        if wu.data[4:36] != self.block:
+        newBlock = (wu.data[4:36] != self.block)
+        if newBlock:
             self.queue.clear()
             self.currentUnit = None
             self.block = wu.data[4:36]
-            
-            for callback in self.staleCallbacks:
-                callback()
-            
             self.logger.reportDebug("New block (WorkQueue)")
         
         #clear the idle flag since we just added work to queue
@@ -105,6 +102,11 @@ class WorkQueue(object):
         #add new WorkUnit to queue
         if work.data and work.target and work.midstate and work.nonces:
             self.queue.append(work)
+        
+        #if there is a new block notify kernels that their work is now stale
+        if newBlock:
+            for callback in self.staleCallbacks:
+                callback()
         
         #if the queue is too short request more work
         if (len(self.queue)) < (self.queueSize):
