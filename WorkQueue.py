@@ -48,6 +48,8 @@ class NonceRange(object):
         self.unit = unit # The WorkUnit this NonceRange comes from.
         self.base = base # The base nonce.
         self.size = size # How many nonces this NonceRange says to test.
+        
+
 
 class WorkQueue(object):
     """A WorkQueue contains WorkUnits and dispatches NonceRanges when requested
@@ -66,7 +68,11 @@ class WorkQueue(object):
         self.requestPending = False
         self.block = ''
         self.idle = True
-        
+    
+    # Called by foundNonce to check if a NonceRange is stale before submitting
+    def isRangeStale(self, nr):
+        return (nr.unit.data[4:36] != self.block)
+
     def storeWork(self, wu):
         
         #create a WorkUnit

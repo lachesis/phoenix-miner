@@ -168,19 +168,25 @@ class KernelInterface(object):
                 return False
         return True
  
-    def calculateHash(self, range, nonce):
-        staticDataUnpacked = unpack('<' + 'I'*19, range.unit.data[:76])
+    def calculateHash(self, nr, nonce):
+        staticDataUnpacked = unpack('<' + 'I'*19, nr.unit.data[:76])
         staticData = pack('>' + 'I'*19, *staticDataUnpacked)
         hashInput = pack('>76sI', staticData, nonce)
         return sha256(sha256(hashInput).digest()).digest()
     
-    def foundNonce(self, range, nonce):
+    def foundNonce(self, nr, nonce):
         """Called by kernels when they may have found a nonce."""
         
-        hash = self.calculateHash(range, nonce)
+        # Check if the block has changed while this NonceRange was being
+        # processed by the kernel. If so, don't send it to the server.
+        if self.miner.queue.isRangeStale(nr):
+            return False
         
-        if self.checkTarget(hash, range.unit.target):
-            formattedResult = pack('<76sI', range.unit.data[:76], nonce)
+        # Check if the hash meets the full difficulty before sending.
+        hash = self.calculateHash(nr, nonce)
+ 
+        if self.checkTarget(hash, nr.unit.target):
+            formattedResult = pack('<76sI', nr.unit.data[:76], nonce)
             d = self.miner.connection.sendResult(formattedResult)
             def callback(accepted):
                 self.miner.logger.reportFound(hash, accepted)

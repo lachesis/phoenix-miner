@@ -132,6 +132,12 @@ class MiningKernel(object):
         self.interface = interface
         self.defines = ''
         
+        # If the user enabled FASTLOOP and set aggression higher than 8,
+        # display a warning that it can cause more stale shares.
+        if self.FASTLOOP and (self.AGGRESSION > 8):
+            self.interface.log("WARNING: FASTLOOP not recommended "
+                               "for AGGRESSION > 8")
+
         # FASTLOOP lowers the size of a single execution on the device, which
         # reduces the hashrate drop for low aggression.
         if self.FASTLOOP:
