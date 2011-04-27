@@ -171,7 +171,11 @@ class RPCClient(ClientBase):
         # Any running long-poll should be interrupted...
         if self.activeLongPoll:
             self.activeLongPoll.pause()
-            self.activeLongPoll.cancel()
+            # Some versions of Twisted lack cancellable Deferreds, for some
+            # reason. Oh well. Pausing it (above) is sufficient to make sure
+            # the callbacks/errbacks don't run anyway.
+            if hasattr(self.activeLongPoll, 'cancel'):
+                self.activeLongPoll.cancel()
             self.activeLongPoll = None
         
         self._startLongPoll()
@@ -304,14 +308,13 @@ class RPCClient(ClientBase):
             self.runCallback('msg', msg)
         if self.connected:
             self.runCallback('disconnect')
-            self._setLongPollingPath(None)
             if not self.polling.running:
                 # Try to get the connection back...
                 self.polling.start(self.askrate or 15, True)
             self.connected = False
         else:
-            self._setLongPollingPath(None) # Can't long poll with no connection
             self.runCallback('failure')
+        self._setLongPollingPath(None) # Can't long poll with no connection...
     def _success(self):
         """Something just worked right, tell the application if we haven't
         already.

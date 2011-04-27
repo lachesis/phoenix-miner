@@ -68,10 +68,11 @@ class CoreInterface(object):
         CoreInterface.numCores += 1
     
     def updateRate(self, rate):
-        """Called by a kernel core to report its current rate.
-        Since, right now, all core rates are averaged together in Miner,
-        we multiply by the total number of cores to get an accurate sum.
-        """
+        """Called by a kernel core to report its current rate."""
+        
+        # Since, right now, all core rates are averaged together in Miner,
+        # we multiply by the total number of cores to get an accurate sum.
+        # This will be changed in the future.
         self.kernelInterface.miner.updateAverage(rate * CoreInterface.numCores)
     
     def getKernelInterface(self):
@@ -182,6 +183,8 @@ class KernelInterface(object):
         intended to be used in hardware sanity-checks.
         """
         
+        # This for loop compares the bytes of the target and hash in reverse
+        # order, because both are 256-bit little endian.
         for t,h in zip(target[::-1], hash[::-1]):
             if ord(t) > ord(h):
                 return True
@@ -190,6 +193,15 @@ class KernelInterface(object):
         return True
  
     def calculateHash(self, nr, nonce):
+        """Given a NonceRange and a nonce, calculate the SHA-256 hash of the
+        solution. The resulting hash is returned as a string, which may be
+        compared with the target as a 256-bit little endian unsigned integer.
+        """
+        # Sometimes kernels send weird nonces down the pipe. We can assume they
+        # accidentally set bits outside of the 32-bit space. If the resulting
+        # nonce is invalid, it will be caught anyway...
+        nonce &= 0xFFFFFFFF
+    
         staticDataUnpacked = unpack('<' + 'I'*19, nr.unit.data[:76])
         staticData = pack('>' + 'I'*19, *staticDataUnpacked)
         hashInput = pack('>76sI', staticData, nonce)
@@ -197,6 +209,11 @@ class KernelInterface(object):
     
     def foundNonce(self, nr, nonce):
         """Called by kernels when they may have found a nonce."""
+        
+        # Sometimes kernels send weird nonces down the pipe. We can assume they
+        # accidentally set bits outside of the 32-bit space. If the resulting
+        # nonce is invalid, it will be caught anyway...
+        nonce &= 0xFFFFFFFF
         
         # Check if the block has changed while this NonceRange was being
         # processed by the kernel. If so, don't send it to the server.
