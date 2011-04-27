@@ -132,11 +132,16 @@ class QueueReader(object):
         dataQueue old.
         """
         
-        # Out with the old...
-        while not self.dataQueue.empty():
-            self.dataQueue.get(False)
-        # ...in with the new.
-        self._requestMore()
+        #only clear queue and request more if no work present, since that
+        #meas a request for more work is already in progress
+        if not self.dataQueue.empty():
+            # Out with the old...
+            while not self.dataQueue.empty():
+                try:
+                    self.dataQueue.get(False)
+                except Empty: continue
+            # ...in with the new.
+            self._requestMore()
     
     def _shutdown(self):
         """Called when the reactor quits."""

@@ -50,7 +50,6 @@ class NonceRange(object):
         self.size = size # How many nonces this NonceRange says to test.
         
 
-
 class WorkQueue(object):
     """A WorkQueue contains WorkUnits and dispatches NonceRanges when requested
     by the miner. WorkQueues dispatch deffereds when they runs out of nonces.
@@ -103,16 +102,16 @@ class WorkQueue(object):
         if work.data and work.target and work.midstate and work.nonces:
             self.queue.append(work)
         
-        #if there is a new block notify kernels that their work is now stale
-        if newBlock:
-            for callback in self.staleCallbacks:
-                callback()
-        
         #if the queue is too short request more work
         if (len(self.queue)) < (self.queueSize):
             self.miner.connection.requestWork()
         else:
             self.requestPending = False
+        
+        #if there is a new block notify kernels that their work is now stale
+        if newBlock:
+            for callback in self.staleCallbacks:
+                callback()
         
         #check if there are deferred NonceRange requests pending
         #since requests to fetch a NonceRange can add additional deferreds to
