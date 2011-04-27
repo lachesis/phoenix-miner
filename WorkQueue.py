@@ -73,6 +73,10 @@ class WorkQueue(object):
     def isRangeStale(self, nr):
         return (nr.unit.data[4:36] != self.block)
 
+        # This is set externally. Not the best practice, but it can be changed
+        # in the future.
+        self.staleCallbacks = []
+        
     def storeWork(self, wu):
         
         #create a WorkUnit
@@ -88,6 +92,10 @@ class WorkQueue(object):
             self.queue.clear()
             self.currentUnit = None
             self.block = wu.data[4:36]
+            
+            for callback in self.staleCallbacks:
+                callback()
+            
             self.logger.reportDebug("New block (WorkQueue)")
         
         #clear the idle flag since we just added work to queue

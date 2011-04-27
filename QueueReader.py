@@ -51,8 +51,7 @@ class QueueReader(object):
         # This shuttles work to the dedicated thread.
         self.dataQueue = Queue()
         
-        # Used in averageing the second-to-last and third-to-last execution
-        # times.
+        # Used in averaging the last execution times.
         self.executionTimeSamples = []
         self.averageExecutionTime = None
         
@@ -69,6 +68,8 @@ class QueueReader(object):
         """Called by the kernel when it's actually starting."""
         self._updateWorkSize(None, None)
         self._requestMore()
+        # We need to know when the current NonceRange in the dataQueue is old.
+        self.interface.addStaleCallback(self._staleCallback)
     
     def _ranExecution(self, dt, nr):
         """An internal function called after an execution completes, with the
@@ -125,6 +126,17 @@ class QueueReader(object):
         d.addCallback(preprocess)
         
         d.addCallback(self.dataQueue.put_nowait)
+    
+    def _staleCallback(self):
+        """Called when the WorkQueue gets new work, rendering whatever is in
+        dataQueue old.
+        """
+        
+        # Out with the old...
+        while not self.dataQueue.empty():
+            self.dataQueue.get(False)
+        # ...in with the new.
+        self._requestMore()
     
     def _shutdown(self):
         """Called when the reactor quits."""

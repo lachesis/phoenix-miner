@@ -72,6 +72,9 @@ class CoreInterface(object):
         # Since, right now, all core rates are averaged together in Miner,
         # we multiply by the total number of cores to get an accurate sum.
         self.kernelInterface.miner.updateAverage(rate * CoreInterface.numCores)
+    
+    def getKernelInterface(self):
+        return self.kernelInterface
         
 class KernelInterface(object):
     """This is an object passed to kernels as an API back to the Phoenix
@@ -137,6 +140,23 @@ class KernelInterface(object):
             return self.miner.queue.fetchRange(workFactor=workFactor)
         else:
             return self.miner.queue.fetchRange(size, workFactor)
+    
+    def addStaleCallback(self, callback):
+        """Register a new function to be called, with no arguments, whenever
+        a new block comes out that would render all previous work stale,
+        requiring a kernel to switch immediately.
+        """
+        
+        # This should be implemented in a better way in the future...
+        if callback not in self.miner.queue.staleCallbacks:
+            self.miner.queue.staleCallbacks.append(callback)
+    
+    def removeStaleCallback(self, callback):
+        """Undo an addStaleCallback."""
+        
+        # Likewise.
+        if callback in self.miner.queue.staleCallbacks:
+            self.miner.queue.staleCallbacks.remove(callback)
     
     def updateRate(self, rate):
         """Used by kernels to declare their hashrate.
