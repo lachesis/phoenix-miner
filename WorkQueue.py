@@ -68,14 +68,14 @@ class WorkQueue(object):
         self.requestPending = False
         self.block = ''
         self.idle = True
+        
+        # This is set externally. Not the best practice, but it can be changed
+        # in the future.
+        self.staleCallbacks = []
     
     # Called by foundNonce to check if a NonceRange is stale before submitting
     def isRangeStale(self, nr):
         return (nr.unit.data[4:36] != self.block)
-
-        # This is set externally. Not the best practice, but it can be changed
-        # in the future.
-        self.staleCallbacks = []
         
     def storeWork(self, wu):
         
