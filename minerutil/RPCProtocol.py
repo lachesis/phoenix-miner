@@ -79,7 +79,7 @@ class RPCClient(ClientBase):
         self.basePath = path
         self.auth = 'Basic %s' % \
             ('%s:%s' % (username, password)).encode('base64').strip()
-        self.askrate = None
+        self.askrate = 10
         
         self.agent = client.Agent(reactor)
         self.longPollPath = None
@@ -308,12 +308,12 @@ class RPCClient(ClientBase):
             self.runCallback('msg', msg)
         if self.connected:
             self.runCallback('disconnect')
-            if not self.polling.running:
-                # Try to get the connection back...
-                self.polling.start(self.askrate or 15, True)
             self.connected = False
         else:
             self.runCallback('failure')
+        if not self.polling.running:
+            # Try to get the connection back...
+            self.polling.start(self.askrate or 15, True)
         self._setLongPollingPath(None) # Can't long poll with no connection...
     def _success(self):
         """Something just worked right, tell the application if we haven't
