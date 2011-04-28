@@ -305,7 +305,8 @@ class MiningKernel(object):
             self.interface.fatal("Failed to compile OpenCL kernel!")
             return
         except PatchError:
-            self.interface.fatal('Failed to patch kernel!')
+            self.interface.fatal('Failed to apply BFI_INT patch to kernel! '
+                'Is BFI_INT supported on this hardware?')
             return
         finally:
             if binary: binary.close()
