@@ -22,6 +22,8 @@
 from time import time
 import platform
 
+from twisted.internet import reactor
+
 from minerutil.MMPProtocol import MMPClient
 from KernelInterface import KernelInterface
 
@@ -85,6 +87,7 @@ class Miner(object):
         # Go!
         self.connection.connect()
         self.kernel.start()
+        reactor.addSystemEventTrigger('before', 'shutdown', self.kernel.stop)
     
     def applyMeta(self):
         """Applies any static metafields to the connection, such as version,

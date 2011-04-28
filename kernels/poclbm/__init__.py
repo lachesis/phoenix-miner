@@ -329,13 +329,16 @@ class MiningKernel(object):
         self.interface.setWorkFactor(self.WORKSIZE)
         
     def start(self):
-        """Mines out a nonce range, returning a Deferred which will be fired
-        with a Python list of Python ints, indicating which nonces meet the
-        target specified in the range's WorkUnit.
-        """
+        """Phoenix wants the kernel to start."""
         
         self.qr.start()
         reactor.callInThread(self.mineThread)
+    
+    def stop(self):
+        """Phoenix wants this kernel to stop. The kernel is not necessarily
+        reusable, so it's safe to clean up as well.
+        """
+        self.qr.stop()
     
     def postprocess(self, output, nr):
         """Scans over a single buffer produced as a result of running the

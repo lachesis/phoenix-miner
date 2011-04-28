@@ -62,14 +62,21 @@ class QueueReader(object):
         self.currentData = None
         self.startedAt = None
         
-        reactor.addSystemEventTrigger('before', 'shutdown', self._shutdown)
-        
     def start(self):
         """Called by the kernel when it's actually starting."""
         self._updateWorkSize(None, None)
         self._requestMore()
         # We need to know when the current NonceRange in the dataQueue is old.
         self.interface.addStaleCallback(self._staleCallback)
+    
+    def stop(self):
+        """Called by the kernel when it's told to stop. This also brings down
+        the loop running in the mining thread.
+        """
+        # Tell the other thread to exit cleanly.
+        while not self.dataQueue.empty():
+            self.dataQueue.get(False)
+        self.dataQueue.put(StopIteration())
     
     def _ranExecution(self, dt, nr):
         """An internal function called after an execution completes, with the
@@ -142,13 +149,6 @@ class QueueReader(object):
                 except Empty: continue
             # ...in with the new.
             self._requestMore()
-    
-    def _shutdown(self):
-        """Called when the reactor quits."""
-        # Tell the other thread to exit cleanly.
-        while not self.dataQueue.empty():
-            self.dataQueue.get(False)
-        self.dataQueue.put(StopIteration())
     
     def __iter__(self):
         return self
