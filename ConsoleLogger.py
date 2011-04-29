@@ -22,6 +22,7 @@
 import sys
 from time import time
 from datetime import datetime
+import subprocess
 
 def formatNumber(n):
     """Format a positive integer in a more readable fashion."""
@@ -47,7 +48,7 @@ class ConsoleLogger(object):
     
     UPDATE_TIME = 1.0
     
-    def __init__(self, miner, verbose=False): 
+    def __init__(self, miner, verbose=False, statusfile=None, blkfound=None):
         self.verbose = verbose
         self.miner = miner
         self.lastUpdate = time() - 1
@@ -56,10 +57,20 @@ class ConsoleLogger(object):
         self.invalid = 0
         self.lineLength = 0
         self.connectionType = None
+        self.idle = False
+        
+        self.statushandler = None
+        if statusfile:
+            from statusfile import StatusFile
+            self.statushandler = StatusFile(path=statusfile)
+        
+        self.blkfound = blkfound
     
     def reportRate(self, rate, update=True):
         """Used to tell the logger the current Khash/sec."""
         self.rate = rate
+        if self.statushandler:
+            self.statushandler.update('HashRate', rate if not self.idle else 0)
         if update:
             self.updateStatus()
     
@@ -69,7 +80,7 @@ class ConsoleLogger(object):
     def reportBlock(self, block):
         self.log('Currently on block: ' + str(block))
         
-    def reportFound(self, hash, accepted):
+    def reportFound(self, hash, accepted, diff=0.0):
         if accepted:
             self.accepted += 1
         else:
@@ -77,12 +88,20 @@ class ConsoleLogger(object):
         
         hexHash = hash[::-1]
         hexHash = hexHash[:8].encode('hex')
+        
+        if self.statushandler:
+            self.statushandler.update('LastBlockFoundTime',int(time()))
+            self.statushandler.update('LastBlockFoundDiff',diff)
+            self.statushandler.increment('NumBlocksFound')
+        
+        self.blkfound and subprocess.Popen(('%s %s %s diff %.2f' % (self.blkfound,hexHash,accepted and 'accepted' or 'rejected',diff)).split(' '))
+        
         if self.verbose:
-            self.log('Result %s... %s' % (hexHash,
-                'accepted' if accepted else 'rejected'))
+            self.log('Result ...%s %s diff %.2f' % (hexHash,
+                'accepted' if accepted else 'rejected',diff))
         else:
-            self.log('Result: %s %s' % (hexHash[8:],
-                'accepted' if accepted else 'rejected'))
+            self.log('Result: %s %s diff %.2f' % (hexHash[8:],
+                'accepted' if accepted else 'rejected',diff))
             
     def reportMsg(self, message):
         self.log(('MSG: ' + message), True, True)
@@ -111,6 +130,10 @@ class ConsoleLogger(object):
                 "[" + str(self.accepted) + " Accepted] "
                 "[" + str(self.invalid) + " Rejected]" + type)
             self.say(status)
+            if self.statushandler:
+                self.statushandler.update('HashRate',rate)
+                self.statushandler.update('Accepted',self.accepted)
+                self.statushandler.update('Rejected',self.invalid)
             self.lastUpdate = time()
         
     def say(self, message, newLine=False, hideTimestamp=False):

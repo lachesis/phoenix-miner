@@ -128,7 +128,6 @@ void search(	const uint state0, const uint state1, const uint state2, const uint
 	W[15]=0x00000280U;
 	W[16] = W16;
 	W[17] = W17;
-
 	W[19] = P1(19) + P2(19) + P3(19);
 	W[18] = P1(18) + P3(18) + P4(18);
 	W[20] = P2(20) + P3(20) + P4(20);

@@ -126,7 +126,7 @@ class MiningKernel(object):
     OUTPUT_SIZE = 0x100
     
     # This gets updated automatically by SVN.
-    REVISION = int('$Rev$'[6:-2])
+    REVISION = '$Rev$'
     
     def __init__(self, interface):
         platforms = cl.get_platforms()

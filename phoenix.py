@@ -53,6 +53,8 @@ class CommandLineOptions(object):
         parser = OptionParser(usage="%prog -u URL [-k kernel] [kernel params]")
         parser.add_option("-v", "--verbose", action="store_true",
             dest="verbose", default=False, help="show debug messages")
+        parser.add_option("--statusfile", dest="statusfile", help="write to a status file")
+        parser.add_option('--blkfound', dest='blkfound', help='command to run when a block is found')
         parser.add_option("-k", "--kernel", dest="kernel", default="poclbm",
             help="the name of the kernel to use")
         parser.add_option("-u", "--url", dest="url", default=None,
@@ -88,7 +90,7 @@ class CommandLineOptions(object):
     
     def makeLogger(self, requester, miner):
         if not self.logger:
-            self.logger = ConsoleLogger(miner, self.parsedSettings.verbose)
+            self.logger = ConsoleLogger(miner, self.parsedSettings.verbose,statusfile=self.parsedSettings.statusfile,blkfound=self.parsedSettings.blkfound)
         return self.logger
     
     def makeConnection(self, requester):

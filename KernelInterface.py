@@ -237,7 +237,8 @@ class KernelInterface(object):
             formattedResult = pack('<76sI', nr.unit.data[:76], nonce)
             d = self.miner.connection.sendResult(formattedResult)
             def callback(accepted):
-                self.miner.logger.reportFound(hash, accepted)
+                diff = (0xffff * 16**52) / float(int(''.join(reversed([nr.unit.target.encode('hex')[2*i:2*i+2] for i in xrange(len(nr.unit.target.encode('hex'))/2)])),16))
+                self.miner.logger.reportFound(hash, accepted, diff=diff)
             d.addCallback(callback)
             return True
         else:

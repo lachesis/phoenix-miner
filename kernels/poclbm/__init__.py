@@ -126,7 +126,7 @@ class MiningKernel(object):
     OUTPUT_SIZE = 0x100
     
     # This gets updated automatically by SVN.
-    REVISION = int('$Rev$'[6:-2])
+    REVISION = '$Rev$'
     
     def __init__(self, interface):
         platforms = cl.get_platforms()
@@ -399,7 +399,6 @@ class MiningKernel(object):
                 if self.output[self.OUTPUT_SIZE]:
                     reactor.callFromThread(self.postprocess, 
                     self.output.copy(), data.nr)
-            
                     self.output.fill(0)
                     cl.enqueue_write_buffer(
                         self.commandQueue, self.output_buf, self.output)
