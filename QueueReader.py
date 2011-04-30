@@ -20,7 +20,7 @@
 # THE SOFTWARE.
 
 from time import time
-from Queue import Queue
+from Queue import Queue, Empty
 from twisted.internet import reactor, defer
 
 class QueueReader(object):
