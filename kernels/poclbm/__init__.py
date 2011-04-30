@@ -116,9 +116,7 @@ class MiningKernel(object):
     BFI_INT = KernelOption(
         'BFI_INT', bool, default=False, advanced=True,
         help='Use the BFI_INT instruction for AMD/ATI GPUs.')
-    OUTPUT_SIZE = KernelOption(
-        'OUTPUTSIZE', int, default=0x20, advanced=True,
-        help='Size of the nonce buffer')
+    OUTPUT_SIZE = 0x40
     
     # This gets updated automatically by SVN.
     REVISION = int('$Rev$'[6:-2])
