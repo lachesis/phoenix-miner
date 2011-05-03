@@ -64,7 +64,7 @@ __kernel void search(	const uint state0, const uint state1, const uint state2, c
 	u W0, W1, W2, W3, W4, W5, W6, W7, W8, W9, W10, W11, W12, W13, W14, W15;
 	u A,B,C,D,E,F,G,H;
 	u nonce;
-	
+
 #ifdef VECTORS 
 	nonce = ((base + get_global_id(0))<<1) + (uint2)(0, 1);
 #else
@@ -100,7 +100,7 @@ __kernel void search(	const uint state0, const uint state1, const uint state2, c
 	A = A + (rotr(F, 6) ^ rotr(F, 11) ^ rotr(F, 25)) + Ch(F, G, H) + K[23] +  W7; E = E + A; A = A + (rotr(B, 2) ^ rotr(B, 13) ^ rotr(B, 22)) + Ma(D, B, C);
 	W8 = (rotr(W6, 17) ^ rotr(W6, 19) ^ (W6 >> 10U)) + fW1; 
 	H = H + (rotr(E, 6) ^ rotr(E, 11) ^ rotr(E, 25)) + Ch(E, F, G) + K[24] +  W8; D = D + H; H = H + (rotr(A, 2) ^ rotr(A, 13) ^ rotr(A, 22)) + Ma(C, A, B);
-	W9 = W2 + (rotr(W7, 17) ^ rotr(W7, 19) ^ (W7 >> 10U));	
+	W9 = W2 + (rotr(W7, 17) ^ rotr(W7, 19) ^ (W7 >> 10U));
 	G = G + (rotr(D, 6) ^ rotr(D, 11) ^ rotr(D, 25)) + Ch(D, E, F) + K[25] +  W9; C = C + G; G = G + (rotr(H, 2) ^ rotr(H, 13) ^ rotr(H, 22)) + Ma(B, H, A);
 	W10 = W3 + (rotr(W8, 17) ^ rotr(W8, 19) ^ (W8 >> 10U)); 
 	F = F + (rotr(C, 6) ^ rotr(C, 11) ^ rotr(C, 25)) + Ch(C, D, E) + K[26] + W10; B = B + F; F = F + (rotr(G, 2) ^ rotr(G, 13) ^ rotr(G, 22)) + Ma(A, G, H);
@@ -178,12 +178,12 @@ __kernel void search(	const uint state0, const uint state1, const uint state2, c
 	B = B + (rotr(G, 6) ^ rotr(G, 11) ^ rotr(G, 25)) + Ch(G, H, A) + K[62] + W14; F = F + B; B = B + (rotr(C, 2) ^ rotr(C, 13) ^ rotr(C, 22)) + Ma(E, C, D);
 	W15 = W15 + (rotr(W0, 7) ^ rotr(W0, 18) ^ (W0 >> 3U)) + W8 + (rotr(W13, 17) ^ rotr(W13, 19) ^ (W13 >> 10U)); 
 	A = A + (rotr(F, 6) ^ rotr(F, 11) ^ rotr(F, 25)) + Ch(F, G, H) + K[63] + W15; E = E + A; A = A + (rotr(B, 2) ^ rotr(B, 13) ^ rotr(B, 22)) + Ma(D, B, C);
-	
+
 	W0 = A + state0; W1 = B + state1;
 	W2 = C + state2; W3 = D + state3;
 	W4 = E + state4; W5 = F + state5;
 	W6 = G + state6; W7 = H + state7;
-	
+
 	H = 0xb0edbdd0 + K[ 0] +  W0; D = 0xa54ff53a + H; H = H + 0x08909ae5U;
 	G = 0x1f83d9abU + (rotr(D, 6) ^ rotr(D, 11) ^ rotr(D, 25)) + (0x9b05688cU ^ (D & 0xca0b3af3U)) + K[ 1] +  W1; C = 0x3c6ef372U + G; G = G + (rotr(H, 2) ^ rotr(H, 13) ^ rotr(H, 22)) +  Ma2(0xbb67ae85U, H, 0x6a09e667U);
 	F = 0x9b05688cU + (rotr(C, 6) ^ rotr(C, 11) ^ rotr(C, 25)) + Ch(C, D, 0x510e527fU) + K[ 2] +  W2; B = 0xbb67ae85U + F; F = F + (rotr(G, 2) ^ rotr(G, 13) ^ rotr(G, 22)) + Ma2(0x6a09e667U, G, H);
@@ -290,9 +290,9 @@ __kernel void search(	const uint state0, const uint state1, const uint state2, c
 	E = E + (rotr(B, 6) ^ rotr(B, 11) ^ rotr(B, 25)) + Ch(B, C, D) + K[59] + W11; A = A + E;
 	W12 = W12 + (rotr(W13, 7) ^ rotr(W13, 18) ^ (W13 >> 3U)) + W5 + (rotr(W10, 17) ^ rotr(W10, 19) ^ (W10 >> 10U)); 
 	H = H + D + (rotr(A, 6) ^ rotr(A, 11) ^ rotr(A, 25)) + Ch(A, B, C) + K[60] + W12;
-	
+
 	H+=0x5be0cd19U;
-	
+
 #ifdef VECTORS
 	if (H.x == 0)
 	{

@@ -309,6 +309,7 @@ class MiningKernel(object):
         finally:
             if binary: binary.close()
        
+        cl.unload_compiler()
         
         # If the user didn't specify their own worksize, use the maxium
         # supported by the device.
@@ -355,32 +356,30 @@ class MiningKernel(object):
     
     def mineThread(self):
         for data in self.qr:
-            self.mineRange(data)
-    
-    def mineRange(self, data):
-        for i in range(data.iterations):
-            self.kernel.search(
-                self.commandQueue, (data.size, ), (self.WORKSIZE, ),
-                data.state[0], data.state[1], data.state[2], data.state[3],
-                data.state[4], data.state[5], data.state[6], data.state[7],
-                data.state2[1], data.state2[2], data.state2[3],
-                data.state2[5], data.state2[6], data.state2[7],
-                data.base[i],
-                data.f[0], data.f[1], data.f[2], data.f[3],
-                data.f[4], data.f[5], data.f[6], data.f[7],
-                self.output_buf)
-            cl.enqueue_read_buffer(
-                self.commandQueue, self.output_buf, self.output)
-            self.commandQueue.finish()
-                
-            # The OpenCL code will flag the last item in the output buffer when
-            # it finds a valid nonce. If that's the case, send it to the main
-            # thread for postprocessing and clean the buffer for the next pass.
-            if self.output[self.OUTPUT_SIZE]:
-                reactor.callFromThread(self.postprocess, self.output.copy(),
-                data.nr)
-            
-                self.output.fill(0)
-                cl.enqueue_write_buffer(
+            for i in range(data.iterations):
+                self.kernel.search(
+                    self.commandQueue, (data.size, ), (self.WORKSIZE, ),
+                    data.state[0], data.state[1], data.state[2], data.state[3],
+                    data.state[4], data.state[5], data.state[6], data.state[7],
+                    data.state2[1], data.state2[2], data.state2[3],
+                    data.state2[5], data.state2[6], data.state2[7],
+                    data.base[i],
+                    data.f[0], data.f[1], data.f[2], data.f[3],
+                    data.f[4], data.f[5], data.f[6], data.f[7],
+                    self.output_buf)
+                cl.enqueue_read_buffer(
                     self.commandQueue, self.output_buf, self.output)
+                self.commandQueue.finish()
+                
+                # The OpenCL code will flag the last item in the output buffer
+                # when it finds a valid nonce. If that's the case, send it to
+                # the main thread for postprocessing and clean the buffer
+                # for the next pass.
+                if self.output[self.OUTPUT_SIZE]:
+                    reactor.callFromThread(self.postprocess, 
+                    self.output.copy(), data.nr)
+            
+                    self.output.fill(0)
+                    cl.enqueue_write_buffer(
+                        self.commandQueue, self.output_buf, self.output)
  
