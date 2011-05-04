@@ -1,3 +1,6 @@
+// This file is taken and modified from the public-domain poclbm project, and
+// we have therefore decided to keep it public-domain in Phoenix.
+
 #ifdef VECTORS
 	typedef uint2 u;
 #else
