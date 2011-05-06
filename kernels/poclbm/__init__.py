@@ -22,6 +22,7 @@
 import pyopencl as cl
 import numpy as np
 import os
+import math
 
 from hashlib import md5
 from struct import pack, unpack
@@ -37,7 +38,7 @@ class KernelData(object):
     execution.
     """
     
-    def __init__(self, nonceRange, vectors, iterations):
+    def __init__(self, nonceRange, core, vectors, aggression):
         # Prepare some raw data, converting it into the form that the OpenCL
         # function expects.
         data   = np.array(
@@ -46,14 +47,20 @@ class KernelData(object):
         # Vectors do twice the work per execution, so calculate accordingly...
         rateDivisor = 2 if vectors else 1
         
-        self.size = (nonceRange.size / rateDivisor) / iterations
-        self.iterations = iterations
+        # get the number of iterations from the aggression and size
+        self.iterations = int((nonceRange.size / (1 << aggression)))
+        self.iterations = max(1, self.iterations)
         
-        self.base = [None] * iterations
-        for i in range(iterations):
+        #set the size to pass to the kernel based on iterations and vectors
+        self.size = (nonceRange.size / rateDivisor) / self.iterations
+        
+        #compute bases for each iteration
+        self.base = [None] * self.iterations
+        for i in range(self.iterations):
             self.base[i] = pack('I',
                 (nonceRange.base/rateDivisor) + (i * self.size))
         
+        #set up state and precalculated static data
         self.state  = np.array(
             unpack('IIIIIIII', nonceRange.unit.midstate), dtype=np.uint32)
         self.state2 = np.array(unpack('IIIIIIII',
@@ -104,10 +111,10 @@ class MiningKernel(object):
         'VECTORS', bool, default=False, advanced=True,
         help='Enable vector support in the kernel?')
     FASTLOOP = KernelOption(
-        'FASTLOOP', bool, default=False, advanced=True,
+        'FASTLOOP', bool, default=True, advanced=True,
         help='Run iterative mining thread?')
     AGGRESSION = KernelOption(
-        'AGGRESSION', int, default=1, advanced=True,
+        'AGGRESSION', int, default=4, advanced=True,
         help='Exponential factor indicating how much work to run '
         'per OpenCL execution')
     WORKSIZE = KernelOption(
@@ -128,37 +135,21 @@ class MiningKernel(object):
         self.device = None
         self.kernel = None
         self.interface = interface
+        self.core = self.interface.addCore()
         self.defines = ''
+        self.loopExponent = 0
         
-        # If the user enabled FASTLOOP and set aggression higher than 8,
-        # display a warning that it can cause more stale shares.
-        if self.FASTLOOP and (self.AGGRESSION > 8):
-            self.interface.log("WARNING: FASTLOOP not recommended "
-                               "for AGGRESSION > 8")
-
-        # FASTLOOP lowers the size of a single execution on the device, which
-        # reduces the hashrate drop for low aggression.
-        if self.FASTLOOP:
-            # mineRange() will be doing its mining in substeps (2^3 = 8)
-            loopExponent = 3
-        else:
-            # Do all work in a single iteration.
-            loopExponent = 0  
-            
-        # Number of iterations per mineRange()
-        self.iterations = 1 << loopExponent
-            
-        # This is the number of nonces to run per kernel;
-        # 2^(16 + sqrt(iterations) + aggression)
-        self.AGGRESSION += 16 + loopExponent
+        # Set the initial number of nonces to run per execution
+        # 2^(16 + aggression)
+        self.AGGRESSION += 16
         self.AGGRESSION = min(32, self.AGGRESSION)
         self.AGGRESSION = max(16, self.AGGRESSION)
         self.size = 1 << self.AGGRESSION
         
         # We need a QueueReader to efficiently provide our dedicated thread
         # with work.
-        self.qr = QueueReader(self.interface, lambda nr: KernelData(nr,
-            self.VECTORS, self.iterations), lambda x,y: self.size)
+        self.qr = QueueReader(self.core, lambda nr: self.preprocess(nr), 
+                                lambda x,y: self.size * 1 << self.loopExponent)
         
         # The platform selection must be valid to mine.
         if self.PLATFORM >= len(platforms) or \
@@ -338,6 +329,31 @@ class MiningKernel(object):
         reusable, so it's safe to clean up as well.
         """
         self.qr.stop()
+    
+    def updateIterations(self):
+        # Set up the number of internal iterations to run if FASTLOOP enabled
+        rate = self.core.getRate()
+         
+        if not (rate <= 0):
+            #calculate the number of iterations to run
+            EXP = max(0, (math.log(rate)/math.log(2)) - (self.AGGRESSION - 8))
+            #prevent switching between loop exponent sizes constantly
+            if EXP > self.loopExponent + 0.54:
+                EXP = round(EXP)
+            elif EXP < self.loopExponent - 0.65:
+                EXP = round(EXP)
+            else:
+                EXP = self.loopExponent
+                
+            self.loopExponent = int(max(0, EXP))
+        
+    def preprocess(self, nr):
+        if self.FASTLOOP:
+            self.updateIterations()
+        
+        self.interface.debug("EXP = " + str(self.loopExponent))
+        kd = KernelData(nr, self.core, self.VECTORS, self.AGGRESSION)
+        return kd
     
     def postprocess(self, output, nr):
         """Scans over a single buffer produced as a result of running the
