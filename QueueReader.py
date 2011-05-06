@@ -23,6 +23,8 @@ from time import time
 from Queue import Queue, Empty
 from twisted.internet import reactor, defer
 
+from KernelInterface import CoreInterface
+
 class QueueReader(object):
     """A QueueReader is a very efficient WorkQueue reader that keeps the next
     nonce range available at all times. The benefit is that threaded mining
@@ -35,9 +37,14 @@ class QueueReader(object):
     
     SAMPLES = 3
     
-    def __init__(self, interface, preprocessor=None, workSizeCallback=None):
-        self.interface = interface
-        self.core = interface.addCore()
+    def __init__(self, core, preprocessor=None, workSizeCallback=None):
+        if not isinstance(core, CoreInterface):
+            # Older kernels used to pass the KernelInterface, and not a
+            # CoreInterface. This is deprecated. We'll go ahead and take care
+            # of that, though...
+            core = core.addCore()
+        self.core = core
+        self.interface = core.getKernelInterface()
         self.preprocessor = preprocessor
         self.workSizeCallback = workSizeCallback
         

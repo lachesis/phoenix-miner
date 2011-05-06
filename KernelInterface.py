@@ -61,19 +61,29 @@ class CoreInterface(object):
     Only KernelInterface should create this.
     """
     
-    numCores = 0
-    
     def __init__(self, kernelInterface):
         self.kernelInterface = kernelInterface
-        CoreInterface.numCores += 1
+        self.averageSamples = []
+        
+        self.kernelInterface.miner._addCore(self)
     
     def updateRate(self, rate):
         """Called by a kernel core to report its current rate."""
         
-        # Since, right now, all core rates are averaged together in Miner,
-        # we multiply by the total number of cores to get an accurate sum.
-        # This will be changed in the future.
-        self.kernelInterface.miner.updateAverage(rate * CoreInterface.numCores)
+        numSamples = self.kernelInterface.miner.options.getAvgSamples()
+        
+        self.averageSamples.append(rate)
+        self.averageSamples = self.averageSamples[-numSamples:]
+        
+        self.kernelInterface.miner.updateAverage()
+    
+    def getRate(self):
+        """Retrieve the average rate for this core."""
+        
+        if not self.averageSamples:
+            return 0
+        
+        return sum(self.averageSamples)/len(self.averageSamples)
     
     def getKernelInterface(self):
         return self.kernelInterface

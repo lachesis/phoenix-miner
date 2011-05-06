@@ -30,7 +30,7 @@ from KernelInterface import KernelInterface
 class Miner(object):
     """The main managing class for the miner itself."""
     
-    # This gets updated automatically by SVN. 
+    # This gets updated automatically by SVN.
     REVISION = int('$Rev$'[6:-2])
     VERSION = 'r%s' % REVISION
     
@@ -41,6 +41,7 @@ class Miner(object):
         self.kernel = None
         self.queue = None
         
+        self.cores = []
         self.lastMetaRate = 0.0
         self.lastRateUpdate = time()
     
@@ -67,9 +68,6 @@ class Miner(object):
         """Configures the Miner via the options specified and begins mining."""
         
         self.options = options
-        
-        self.averageSamples = [0]*self.options.getAvgSamples()
-        self.averageSamples = max(1, self.averageSamples)
         
         self.logger = self.options.makeLogger(self)
         self.connection = self.options.makeConnection(self)
@@ -103,18 +101,21 @@ class Miner(object):
         system = platform.system() + ' ' + platform.version()
         self.connection.setMeta('os', system)
     
-    def updateAverage(self, rate):
-        """Average 'khash' more Khashes into our current sliding window
-        average and report to the rest of the system.
+    def _addCore(self, core):
+        """Temporary function. Practically already deprecated."""
+        self.cores.append(core)
+    
+    def updateAverage(self):
+        """Query all mining cores for their Khash/sec rate and sum.
         """
         
-        self.averageSamples.append(rate)
-        self.averageSamples.pop(0)
-        average = sum(self.averageSamples)/len(self.averageSamples)
+        total = 0
+        for core in self.cores:
+            total += core.getRate()
         
-        self.logger.reportRate(average)
+        self.logger.reportRate(total)
         
         # Let's not spam the server with rate messages.
         if self.lastMetaRate+30 < time():
-            self.connection.setMeta('rate', average)
+            self.connection.setMeta('rate', total)
             self.lastMetaRate = time()
