@@ -126,7 +126,7 @@ class WorkQueue(object):
     def getNext(self):
         
         #check if the queue will fall below desired size
-        if (len(self.queue)) < (self.queueSize + 1):
+        if (len(self.queue) - 1) < (self.queueSize):
             if not self.requestPending:
                 self.requestPending = True
                 self.miner.connection.requestWork()
