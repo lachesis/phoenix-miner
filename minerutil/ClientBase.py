@@ -25,8 +25,18 @@ class AssignedWork(object):
     target = None
     
 class ClientBase(object):
+    callbacksActive = True
+
+    def _deactivateCallbacks(self):
+        """Shut down the runCallback function. Typically used post-disconnect.
+        """
+        self.callbacksActive = False
+    
     def runCallback(self, callback, *args):
         """Call the callback on the handler, if it's there, specifying args."""
+        
+        if not self.callbacksActive:
+            return
         
         func = getattr(self.handler, 'on' + callback.capitalize(), None)
         if callable(func):

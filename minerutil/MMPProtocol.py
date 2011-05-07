@@ -197,6 +197,8 @@ class MMPClient(ReconnectingClientFactory, ClientBase):
         The MMPClient shouldn't be used again.
         """
         
+        self._deactivateCallbacks()
+        
         if self.connection is not None:
             self.connection.transport.loseConnection()
         

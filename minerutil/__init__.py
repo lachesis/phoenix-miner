@@ -38,20 +38,7 @@ def openURL(url, handler):
         
         return client
     elif parsed.scheme.lower() == 'http':
-        p = (parsed.path or '/') + ('?' + parsed.query if parsed.query else '')
-        
-        client = RPCClient(handler, parsed.hostname or 'localhost',
-            parsed.port or 80, parsed.username or 'default',
-            parsed.password or 'default', p)
-        
-        for var, value in urlparse.parse_qsl(parsed.params):
-            if var == 'askrate':
-                try:
-                    client.askrate = float(value)
-                except ValueError:
-                    pass
-        
-        return client
+        return RPCClient(handler, parsed)
     else:
         raise ValueError('Unknown protocol: ' + parsed.scheme)
     
