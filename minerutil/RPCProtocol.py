@@ -23,8 +23,8 @@ import urlparse
 import json
 from zope.interface import implements
 from twisted.web.iweb import IBodyProducer
-from twisted.web.client import Agent, ResponseDone
-from twisted.web._newclient import ResponseFailed
+from client3420 import Agent, ResponseDone
+from _newclient3420 import ResponseFailed
 from twisted.web.http import PotentialDataLoss
 from twisted.web.http_headers import Headers
 from twisted.internet import defer, reactor, protocol, error
@@ -68,7 +68,7 @@ class RPCPoller(object):
     
     def __init__(self, root):
         self.root = root
-        self.agent = Agent(reactor)
+        self.agent = Agent(reactor, persistent=True)
         self.askInterval = None
         self.askCall = None
         self.currentlyAsking = False
@@ -174,7 +174,7 @@ class LongPoller(object):
     def __init__(self, url, root):
         self.url = url
         self.root = root
-        self.agent = Agent(reactor)
+        self.agent = Agent(reactor, persistent=True)
         self.polling = False
     
     def start(self):
