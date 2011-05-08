@@ -351,7 +351,6 @@ class MiningKernel(object):
         if self.FASTLOOP:
             self.updateIterations()
         
-        self.interface.debug("EXP = " + str(self.loopExponent))
         kd = KernelData(nr, self.core, self.VECTORS, self.AGGRESSION)
         return kd
     
