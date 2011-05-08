@@ -21,108 +21,44 @@
 
 import urlparse
 import json
-from twisted.web2.client import http
-from twisted.web2 import stream, http_headers
+from zope.interface import implements
+from twisted.web.iweb import IBodyProducer
+from twisted.web.client import Agent, ResponseDone
+from twisted.web.http import PotentialDataLoss
+from twisted.web.http_headers import Headers
 from twisted.internet import defer, reactor, protocol, error
+from twisted.internet.protocol import Protocol
 from twisted.python import failure
 
 from ClientBase import ClientBase, AssignedWork
 
-class SimpleHTTPManager(http.EmptyHTTPClientManager):
-    def __init__(self, keepalive=3600):
-        self.keepalive = keepalive
-        self.timeoutTimers = {}
-        self.busyClients = []
-        self.clients = {}
-        self.waitDeferreds = {}
+class StringBodyProducer(object):
+    """Something Twisted itself needs..."""
+    implements(IBodyProducer)
     
-    def waitForClient(self, client):
-        """Returns a deferred that waits for the client to become available."""
-        if client not in self.busyClients:
-            return defer.succeed(True)
-        d = defer.Deferred()
-        waitlist = self.waitDeferreds.setdefault(client, [])
-        waitlist.append(d)
-    
-    def clientIdle(self, client):
-        self._startTimeoutTimer(client)
-        """Client is idle; time to release the next item in the waitlist."""
-        if client in self.busyClients:
-            self.busyClients.remove(client)
-        waitlist = self.waitDeferreds.get(client, [])
-        if waitlist:
-            waitlist.pop(0).callback(True)
+    def __init__(self, body):
+        self.body = body
+        self.length = len(self.body)
+    def startProducing(self, consumer):
+        consumer.write(self.body)
+        return defer.succeed(None)
+    def pauseProducing(self):
+        pass
+    def stopProducing(self):
+        pass
 
-    def clientBusy(self, client):
-        """Remember busy clients so that we can defer."""
-        self._stopTimeoutTimer(client)
-        if client not in self.busyClients:
-            self.busyClients.append(client)
-    
-    def clientGone(self, client):
-        """Disconnecting clients are cleaned up."""
-        self._stopTimeoutTimer(client)
-        
-        keys = []
-        for k,v in self.clients.items():
-            if v == client:
-                keys.append(k)
-        for k in keys:
-            del self.clients[k]
-        
-        # All waiting deferreds need to be told that the client is no longer
-        # available.
-        if client in self.waitDeferreds:
-            for deferred in self.waitDeferreds[client]:
-                deferred.callback(False)
-            del self.waitDeferreds[client]
-    
-    def _startTimeoutTimer(self, client):
-        self._stopTimeoutTimer(client)
-        self.timeoutTimers[client] = reactor.callLater(self.keepalive,
-            client.transport.loseConnection)
-    
-    def _stopTimeoutTimer(self, client):
-        if client in self.timeoutTimers:
-            try:
-                self.timeoutTimers[client].cancel()
-            except (error.AlreadyCancelled, error.AlreadyCalled):
-                pass
-            del self.timeoutTimers[client]
-        
-    
-    @defer.inlineCallbacks
-    def request(self, url, headers={}, data=None, channel=None):
-        """Request URL with headers. If present data is POSTed
-        (GETed otherwise) and the unique connection is identified with channel.
-        """
-        
-        url = urlparse.urlparse(url)
-        
-        host = url.hostname
-        port = url.port or 80
-        
-        key = (host, port, channel)
-        client = None
-        if key in self.clients:
-            client = self.clients[key]
-        
-        if not client or not (yield self.waitForClient(client)):
-            c = protocol.ClientCreator(reactor, http.HTTPClientProtocol, self)
-            client = yield c.connectTCP(host, port)
-            self.clients[key] = client
-        
-        outStream = stream.MemoryStream(data) if data else None
-        request = http.ClientRequest('POST' if data else 'GET', url.path,
-                                     headers, outStream)
-        
-        response = yield client.submitRequest(request, False)
-        
-        d = defer.Deferred()
-        yield stream.readStream(response.stream, d.callback)
-        data = yield d
-        
-        defer.returnValue((response.headers, data))
+class BodyLoader(Protocol):
+    """Loads an HTTP body and fires it, as a string, through a Deferred."""    
+    def __init__(self, d):
+        self.d = d
+        self.data = ''
+    def dataReceived(self, bytes):
+        self.data += bytes
+    def connectionLost(self, reason):
+        if not reason.check(ResponseDone, PotentialDataLoss):
+            self.d.errback(failure.Failure(reason))
+        else:
+            self.d.callback(self.data)
 
 class ServerMessage(Exception): pass
         
@@ -131,8 +67,10 @@ class RPCPoller(object):
     
     def __init__(self, root):
         self.root = root
+        self.agent = Agent(reactor)
         self.askInterval = None
         self.askCall = None
+        self.currentlyAsking = False
     
     def setInterval(self, interval):
         """Change the interval at which to poll the getwork() function."""
@@ -142,6 +80,8 @@ class RPCPoller(object):
             try:
                 self.askCall.cancel()
             except (error.AlreadyCancelled, error.AlreadyCalled):
+                # Don't _startCall, because this means an ask is already in
+                # progress.
                 return
         
         self._startCall()
@@ -155,17 +95,25 @@ class RPCPoller(object):
     def ask(self):
         """Run a getwork request immediately."""
         
+        if self.currentlyAsking:
+            return
+        self.currentlyAsking = True
+        
         if self.askCall:
             try:
+                # This might be a manual ask, so stop the pending automatic ask
                 self.askCall.cancel()
             except error.AlreadyCancelled:
+                # This only happens when there's an ask already in progress...
                 return
             except error.AlreadyCalled:
+                # If this was an automatic ask, askCall won't let us cancel.
                 pass
         
         d = self.call('getwork')
         
         def errback(failure):
+            self.currentlyAsking = False
             if failure.check(ServerMessage):
                 self.root.runCallback('msg', failure.getErrorMessage())
             self.root._failure()
@@ -173,6 +121,7 @@ class RPCPoller(object):
         d.addErrback(errback)
         
         def callback(x):
+            self.currentlyAsking = False
             try:
                 (headers, result) = x
             except TypeError:
@@ -186,18 +135,21 @@ class RPCPoller(object):
     def call(self, method, params=[]):
         """Call the specified remote function."""
         
-        headers, data = yield self.root.manager.request('http://%s:%d%s' %
-            (self.root.url.hostname, self.root.url.port, self.root.url.path),
-            http.Headers({
-                'Host': '%s:%d' % (self.root.url.hostname, self.root.url.port),
+        body = json.dumps({'method': method, 'params': params, 'id': 1})
+        response = yield self.agent.request('POST',
+            self.root.url,
+            Headers({
                 'Authorization': [self.root.auth],
-                'User-Agent': self.root.version,
-                'Content-Type': http_headers.MimeType('application', 'json')
-            }), data=json.dumps({'method': method, 'params': params, 'id': 1}))
+                'User-Agent': [self.root.version],
+                'Content-Type': ['application/json'],
+            }), StringBodyProducer(body))
         
+        d = defer.Deferred()
+        response.deliverBody(BodyLoader(d))
+        data = yield d
         result = self.parse(data)
         
-        defer.returnValue((headers, result))
+        defer.returnValue((response.headers, result))
     
     @classmethod
     def parse(cls, data):
@@ -221,6 +173,7 @@ class LongPoller(object):
     def __init__(self, url, root):
         self.url = url
         self.root = root
+        self.agent = Agent(reactor)
         self.polling = False
     
     def start(self):
@@ -229,34 +182,39 @@ class LongPoller(object):
             return
         self.polling = True
         
-        d = self.root.manager.request(self.url.geturl(),
-            http.Headers({
-                'Host': '%s:%d' % (self.root.url.hostname, self.root.url.port),
+        d = self.agent.request('GET', self.url,
+            Headers({
                 'Authorization': [self.root.auth],
-                'User-Agent': self.root.version
-            }), channel=self)
+                'User-Agent': [self.root.version]
+            }))
         d.addBoth(self._requestComplete)
     
     def stop(self):
         """Stop polling. This LongPoller probably shouldn't be reused."""
         self.polling = False
     
+    @defer.inlineCallbacks
     def _requestComplete(self, response):
         if not self.polling:
             return
-        # Begin anew...
-        self.polling = False
-        self.start()
         
         if isinstance(response, failure.Failure):
+            self.polling = False
+            self.start()
             return
         
-        headers, data = response
+        d = defer.Deferred()
+        response.deliverBody(BodyLoader(d))
+        data = yield d
         try:
             result = RPCPoller.parse(data)
         except ValueError:
+            self.polling = False
+            self.start()
             return
         
+        self.polling = False
+        self.start()
         self.root.handleWork(result, True)
 
 class RPCClient(ClientBase):
@@ -264,22 +222,17 @@ class RPCClient(ClientBase):
     
     def __init__(self, handler, url):
         self.handler = handler
-        self.url = url
+        self.url = '%s://%s:%d%s' % (url.scheme, url.hostname,
+                                     url.port or 80, url.path)
         self.params = {}
-        for param in self.url.params.split('&'):
+        for param in url.params.split('&'):
             s = param.split('=',1)
             if len(s) == 2:
                 self.params[s[0]] = s[1]
         self.auth = 'Basic ' + ('%s:%s' % (
-            self.url.username, self.url.password)).encode('base64').strip()
+            url.username, url.password)).encode('base64').strip()
         self.version = 'RPCClient/0.8'
     
-        try:
-            keepalive = int(self.params['keepalive'])
-        except (KeyError, ValueError):
-            keepalive = 60
-    
-        self.manager = SimpleHTTPManager(keepalive)
         self.poller = RPCPoller(self)
         self.longPoller = None # Gets created later...
         
@@ -378,22 +331,25 @@ class RPCClient(ClientBase):
         longpoll = headers.getRawHeaders('X-Long-Polling')
         if longpoll:
             lpParsed = urlparse.urlparse(longpoll[0])
-            lpURL = urlparse.ParseResult(self.url.scheme,
-                lpParsed.netloc or self.url.netloc, lpParsed.path, '', '', '')
+            urlParsed = urlparse.urlparse(self.url)
+            lpURL = '%s://%s:%d%s' % (
+                lpParsed.scheme or urlParsed.scheme,
+                lpParsed.hostname or urlParsed.hostname,
+                (lpParsed.port if lpParsed.hostname else urlParsed.port) or 80,
+                lpParsed.path)
             if self.longPoller and self.longPoller.url != lpURL:
                 self.longPoller.stop()
                 self.longPoller = None
-            else:
-                self.runCallback('longpoll', True)
             if not self.longPoller:
                 self.longPoller = LongPoller(lpURL, self)
                 self.longPoller.start()
                 self.useAskrate('lpaskrate')
+                self.runCallback('longpoll', True)
         elif self.longPoller:
-            self.runCallback('longpoll', False)
             self.longPoller.stop()
             self.longPoller = None
             self.useAskrate('askrate')
+            self.runCallback('longpoll', False)
         
     def _failure(self):
         if self.saidConnected:
@@ -403,6 +359,6 @@ class RPCClient(ClientBase):
             self.runCallback('failure')
         self.useAskrate('retryrate')
         if self.longPoller:
-            self.runCallback('longpoll', False)
             self.longPoller.stop()
             self.longPoller = None
+            self.runCallback('longpoll', False)
