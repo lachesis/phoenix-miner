@@ -24,6 +24,7 @@ import json
 from zope.interface import implements
 from twisted.web.iweb import IBodyProducer
 from twisted.web.client import Agent, ResponseDone
+from twisted.web._newclient import ResponseFailed
 from twisted.web.http import PotentialDataLoss
 from twisted.web.http_headers import Headers
 from twisted.internet import defer, reactor, protocol, error
@@ -182,12 +183,16 @@ class LongPoller(object):
             return
         self.polling = True
         
-        d = self.agent.request('GET', self.url,
-            Headers({
-                'Authorization': [self.root.auth],
-                'User-Agent': [self.root.version]
-            }))
-        d.addBoth(self._requestComplete)
+        self._request()
+        
+    def _request(self):
+        if self.polling:
+            d = self.agent.request('GET', self.url,
+                Headers({
+                    'Authorization': [self.root.auth],
+                    'User-Agent': [self.root.version]
+                }))
+            d.addBoth(self._requestComplete)
     
     def stop(self):
         """Stop polling. This LongPoller probably shouldn't be reused."""
@@ -199,22 +204,24 @@ class LongPoller(object):
             return
         
         if isinstance(response, failure.Failure):
-            self.polling = False
-            self.start()
+            self._request()
             return
         
         d = defer.Deferred()
         response.deliverBody(BodyLoader(d))
-        data = yield d
+        try:
+            data = yield d
+        except ResponseFailed:
+            self._request()
+            return
+        
         try:
             result = RPCPoller.parse(data)
         except ValueError:
-            self.polling = False
-            self.start()
+            self._request()
             return
         
-        self.polling = False
-        self.start()
+        self._request()
         self.root.handleWork(result, True)
 
 class RPCClient(ClientBase):
