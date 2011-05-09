@@ -505,7 +505,7 @@ class HTTPClientParser(HTTPParser):
                 # but maybe there's some buggy application code somewhere
                 # making things difficult.
                 log.err()
-        elif self.state not in (DONE, STATUS):
+        elif self.state != DONE:
             self._responseDeferred.errback(Failure(ResponseFailed([reason])))
             del self._responseDeferred
 
@@ -1334,7 +1334,13 @@ class HTTP11ClientProtocol(Protocol):
             self._responseDeferred.chainDeferred(self._finishedRequest)
 
         reason = ConnectionDone("synthetic!")
-        self._giveUp(Failure(reason))
+        connection = self._parser.connHeaders.getRawHeaders('Connection')
+        keepalive = connection and connection[0].lower() == 'keep-alive'
+        if self.persistent and keepalive:
+            self._disconnectParser(Failure(reason))
+        else:
+            self._giveUp(Failure(reason))
+            self.abort()
 
 
     def _disconnectParser(self, reason):

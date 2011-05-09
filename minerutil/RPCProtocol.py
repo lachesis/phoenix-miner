@@ -114,6 +114,8 @@ class RPCPoller(object):
         d = self.call('getwork')
         
         def errback(failure):
+            if not self.currentlyAsking:
+                return
             self.currentlyAsking = False
             if failure.check(ServerMessage):
                 self.root.runCallback('msg', failure.getErrorMessage())
@@ -122,6 +124,8 @@ class RPCPoller(object):
         d.addErrback(errback)
         
         def callback(x):
+            if not self.currentlyAsking:
+                return
             self.currentlyAsking = False
             try:
                 (headers, result) = x
@@ -130,7 +134,11 @@ class RPCPoller(object):
             self.root.handleWork(result)
             self.root.handleHeaders(headers)
             self._startCall()
-        d.addCallback(callback)
+        # Minor bug in the #3420 patch; you can't start new requests during
+        # callbacks from old ones, so this function has the reactor call it a
+        # little bit later (with no artificial delay)
+        def callback_delay(x): reactor.callLater(0, callback, x)
+        d.addCallback(callback_delay)
     
     @defer.inlineCallbacks
     def call(self, method, params=[]):
@@ -142,7 +150,7 @@ class RPCPoller(object):
             Headers({
                 'Authorization': [self.root.auth],
                 'User-Agent': [self.root.version],
-                'Content-Type': ['application/json'],
+                'Content-Type': ['application/json']
             }), StringBodyProducer(body))
         
         d = defer.Deferred()
