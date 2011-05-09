@@ -74,6 +74,9 @@ class Miner(object):
         self.kernel = self.options.makeKernel(KernelInterface(self))
         self.queue = self.options.makeQueue(self)
         
+        #log a message to let the user know that phoenix is starting
+        self.logger.log("Phoenix %s starting..." % self.VERSION)
+        
         #this will need to be changed to add new protocols
         if isinstance(self.connection, MMPClient):
             self.logger.reportType('MMP')
