@@ -100,7 +100,7 @@ class Miner(object):
         # user's desired name for this miner anyway.
         
         self.connection.setVersion(
-            'phoenix', 'Phoenix Miner', self.VERSION.lstrip('v'))
+            'phoenix', 'Phoenix Miner', self.VERSION)
         system = platform.system() + ' ' + platform.version()
         self.connection.setMeta('os', system)
     

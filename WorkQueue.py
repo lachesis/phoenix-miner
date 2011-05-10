@@ -64,8 +64,8 @@ class WorkQueue(object):
         self.queue = deque('', self.queueSize)
         self.deferredQueue = deque()
         self.currentUnit = None
-        self.requestPending = False
         self.block = ''
+        self.lastBlock = None
         self.idle = True
         
         # This is set externally. Not the best practice, but it can be changed
@@ -77,6 +77,15 @@ class WorkQueue(object):
         return (nr.unit.data[4:36] != self.block)
         
     def storeWork(self, wu):
+        
+        #check if this work matches the previous block
+        if self.lastBlock is not None and (wu.data[4:36] == self.lastBlock):
+            self.logger.reportDebug('Server gave work from the previous '
+                                    'block, ignoring.')
+            #if the queue is too short request more work
+            if (len(self.queue)) < (self.queueSize):
+                self.miner.connection.requestWork()
+            return
         
         #create a WorkUnit
         work = WorkUnit()
@@ -91,6 +100,7 @@ class WorkQueue(object):
         if newBlock:
             self.queue.clear()
             self.currentUnit = None
+            self.lastBlock = self.block
             self.block = wu.data[4:36]
             self.logger.reportDebug("New block (WorkQueue)")
         
@@ -105,8 +115,6 @@ class WorkQueue(object):
         #if the queue is too short request more work
         if (len(self.queue)) < (self.queueSize):
             self.miner.connection.requestWork()
-        else:
-            self.requestPending = False
         
         #if there is a new block notify kernels that their work is now stale
         if newBlock:
@@ -115,9 +123,8 @@ class WorkQueue(object):
         
         #check if there are deferred NonceRange requests pending
         #since requests to fetch a NonceRange can add additional deferreds to
-        #the queue, cache the size beforehand to avoid infanite loops
-        iterations = len(self.deferredQueue)
-        for i in range(iterations):
+        #the queue, cache the size beforehand to avoid infinite loops.
+        for i in range(len(self.deferredQueue)):
             df, size = self.deferredQueue.popleft()
             d = self.fetchRange(size)
             d.chainDeferred(df)
@@ -127,9 +134,7 @@ class WorkQueue(object):
         
         #check if the queue will fall below desired size
         if (len(self.queue) - 1) < (self.queueSize):
-            if not self.requestPending:
-                self.requestPending = True
-                self.miner.connection.requestWork()
+            self.miner.connection.requestWork()
     
         #return next WorkUnit
         return self.queue.popleft()
@@ -197,9 +202,7 @@ class WorkQueue(object):
             else:
                 
                 #if there isn't a pending request for more work send one
-                if not self.requestPending:
-                    self.requestPending = True
-                    self.miner.connection.requestWork()
+                self.miner.connection.requestWork()
                  
                 #display a message if the miner is idle
                 if not self.idle:

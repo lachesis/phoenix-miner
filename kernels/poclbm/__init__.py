@@ -41,8 +41,8 @@ class KernelData(object):
     def __init__(self, nonceRange, core, vectors, aggression):
         # Prepare some raw data, converting it into the form that the OpenCL
         # function expects.
-        data   = np.array(
-            unpack('IIII', nonceRange.unit.data[64:]), dtype=np.uint32)
+        data = np.array(
+               unpack('IIII', nonceRange.unit.data[64:]), dtype=np.uint32)
         
         # Vectors do twice the work per execution, so calculate accordingly...
         rateDivisor = 2 if vectors else 1
@@ -61,7 +61,7 @@ class KernelData(object):
                 (nonceRange.base/rateDivisor) + (i * self.size))
         
         #set up state and precalculated static data
-        self.state  = np.array(
+        self.state = np.array(
             unpack('IIIIIIII', nonceRange.unit.midstate), dtype=np.uint32)
         self.state2 = np.array(unpack('IIIIIIII',
             calculateMidstate(nonceRange.unit.data[64:80] +
@@ -313,7 +313,7 @@ class MiningKernel(object):
             self.WORKSIZE = min(self.WORKSIZE, maxSize)
             self.WORKSIZE = max(self.WORKSIZE, 1)
             #if the worksize is not a power of 2, round down to the nearest one
-            if not ((self.WORKSIZE & (self.WORKSIZE - 1)) == 0):   
+            if (self.WORKSIZE & (self.WORKSIZE - 1)) != 0:   
                 self.WORKSIZE = 1 << int(math.floor(math.log(X)/math.log(2)))
             
         self.interface.setWorkFactor(self.WORKSIZE)
