@@ -95,15 +95,6 @@ class RPCPoller(object):
                 pass
             self.askCall = None
     
-    def _errorTimeout(self):
-        """Prevent idling from happening, until we can figure out what's going
-        on...
-        """
-        self.root.runCallback('msg', 'getwork() has stalled for 60 seconds, '
-            'recovering')
-        self.currentlyAsking = False
-        self.ask()
-    
     def ask(self):
         """Run a getwork request immediately."""
         
@@ -113,7 +104,6 @@ class RPCPoller(object):
         self._stopCall()
         
         d = self.call('getwork')
-        timeout = reactor.callLater(60, self._errorTimeout)
         
         def errback(failure):
             if not self.currentlyAsking:
@@ -123,10 +113,6 @@ class RPCPoller(object):
                 self.root.runCallback('msg', failure.getErrorMessage())
             self.root._failure()
             self._startCall()
-            try:
-                timeout.cancel()
-            except (error.AlreadyCancelled, error.AlreadyCalled):
-                pass
         d.addErrback(errback)
         
         def callback(x):
@@ -140,10 +126,6 @@ class RPCPoller(object):
             self.root.handleWork(result)
             self.root.handleHeaders(headers)
             self._startCall()
-            try:
-                timeout.cancel()
-            except (error.AlreadyCancelled, error.AlreadyCalled):
-                pass
         # Minor bug in the #3420 patch; you can't start new requests during
         # callbacks from old ones, so this function has the reactor call it a
         # little bit later (with no artificial delay)
