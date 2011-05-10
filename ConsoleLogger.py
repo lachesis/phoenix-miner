@@ -86,7 +86,7 @@ class ConsoleLogger(object):
         hexHash = hash[::-1]
         hexHash = hexHash[:8].encode('hex')
         if self.verbose:
-            self.log('Result ...%s %s' % (hexHash,
+            self.log('Result %s... %s' % (hexHash,
                 'accepted' if accepted else 'rejected'))
         else:
             self.log('Result: %s %s' % (hexHash[8:],
