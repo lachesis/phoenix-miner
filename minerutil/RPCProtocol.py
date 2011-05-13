@@ -149,7 +149,7 @@ class RPCPoller(object):
         response.deliverBody(BodyLoader(d))
         data = yield d
         result = self.parse(data)
-        
+
         defer.returnValue((response.headers, result))
     
     @classmethod
@@ -288,8 +288,17 @@ class RPCClient(ClientBase):
         
         def errback(*ignored):
             return False # ANY error while turning in work is a Bad Thing(TM).
-        d.addErrback(errback)
+            
+        #we need to return the result, not the headers
+        def callback(x):
+            try:
+                (headers, accepted) = x
+            except TypeError:
+                return False
+            return accepted
         
+        d.addErrback(errback)
+        d.addCallback(callback)
         return d
     
     def useAskrate(self, variable):
