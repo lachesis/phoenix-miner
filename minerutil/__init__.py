@@ -37,7 +37,7 @@ def openURL(url, handler):
             client.setMeta(var, value)
         
         return client
-    elif parsed.scheme.lower() == 'http':
+    elif parsed.scheme.lower() in ['http', 'https']:
         return RPCClient(handler, parsed)
     else:
         raise ValueError('Unknown protocol: ' + parsed.scheme)
