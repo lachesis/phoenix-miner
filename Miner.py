@@ -40,6 +40,7 @@ class Miner(object):
         self.connection = None
         self.kernel = None
         self.queue = None
+        self.idle = False
         
         self.cores = []
         self.lastMetaRate = 0.0
@@ -69,7 +70,7 @@ class Miner(object):
         
         self.options = options
         
-        self.logger = self.options.makeLogger(self)
+        self.logger = self.options.makeLogger(self, self)
         self.connection = self.options.makeConnection(self)
         self.kernel = self.options.makeKernel(KernelInterface(self))
         self.queue = self.options.makeQueue(self)
@@ -108,13 +109,27 @@ class Miner(object):
         """Temporary function. Practically already deprecated."""
         self.cores.append(core)
     
+    #used by WorkQueue to report when the miner is idle
+    def reportIdle(self, idle):
+
+        #if idle status has changed force an update
+        if self.idle != idle:
+            if idle:
+                self.logger.reportRate(0, True)
+                self.connection.setMeta('rate', 0)
+                self.lastMetaRate = time()
+            else:
+                self.logger.updateStatus(True)
+        
+        self.idle = idle
+    
     def updateAverage(self):
-        """Query all mining cores for their Khash/sec rate and sum.
-        """
+        #Query all mining cores for their Khash/sec rate and sum.
         
         total = 0
-        for core in self.cores:
-            total += core.getRate()
+        if not self.idle:
+            for core in self.cores:
+                total += core.getRate()
         
         self.logger.reportRate(total)
         

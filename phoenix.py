@@ -86,9 +86,9 @@ class CommandLineOptions(object):
         var, value = tuple(pair)
         self.kernelOptions[var.upper()] = value
     
-    def makeLogger(self, requester):
+    def makeLogger(self, requester, miner):
         if not self.logger:
-            self.logger = ConsoleLogger(self.parsedSettings.verbose)
+            self.logger = ConsoleLogger(miner, self.parsedSettings.verbose)
         return self.logger
     
     def makeConnection(self, requester):

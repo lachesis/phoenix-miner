@@ -47,29 +47,21 @@ class ConsoleLogger(object):
     
     UPDATE_TIME = 1.0
     
-    def __init__(self, verbose=False):
+    def __init__(self, miner, verbose=False): 
         self.verbose = verbose
+        self.miner = miner
         self.lastUpdate = time() - 1
         self.rate = 0
         self.accepted = 0
         self.invalid = 0
         self.lineLength = 0
         self.connectionType = None
-        self.idle = False
     
     def reportRate(self, rate, update=True):
         """Used to tell the logger the current Khash/sec."""
         self.rate = rate
         if update:
             self.updateStatus()
-    
-    #used by WorkQueue to report when the miner is idle
-    def reportIdle(self, idle):
-        #if idle status has changed force an update
-        if self.idle != idle:
-            self.updateStatus(True)
-            
-        self.idle = idle
     
     def reportType(self, type):
         self.connectionType = type
@@ -112,7 +104,7 @@ class ConsoleLogger(object):
         #only update if last update was more than a second ago
         dt = time() - self.lastUpdate
         if force or dt > self.UPDATE_TIME:
-            rate = self.rate if (not self.idle) else 0
+            rate = self.rate if (not self.miner.idle) else 0
             type = " [" + str(self.connectionType) + "]" if self.connectionType is not None else ''
             status = (
                 "[" + formatNumber(rate) + "hash/sec] "
