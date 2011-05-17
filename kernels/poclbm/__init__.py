@@ -310,6 +310,12 @@ class MiningKernel(object):
         if self.WORKSIZE is None:
             self.WORKSIZE = maxSize
         else:
+            if self.WORKSIZE > maxSize:
+                self.interface.log('Warning: Worksize exceeds the maximum of '
+                                    str(maxSize) + ', using default.')
+            if self.WORKSIZE < 1:
+                self.interface.log('Warning: Invalid worksize, using default.')
+            
             self.WORKSIZE = min(self.WORKSIZE, maxSize)
             self.WORKSIZE = max(self.WORKSIZE, 1)
             #if the worksize is not a power of 2, round down to the nearest one
