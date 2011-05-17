@@ -312,7 +312,7 @@ class MiningKernel(object):
         else:
             if self.WORKSIZE > maxSize:
                 self.interface.log('Warning: Worksize exceeds the maximum of '
-                                    str(maxSize) + ', using default.')
+                                    + str(maxSize) + ', using default.')
             if self.WORKSIZE < 1:
                 self.interface.log('Warning: Invalid worksize, using default.')
             
