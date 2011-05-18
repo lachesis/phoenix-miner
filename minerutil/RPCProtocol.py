@@ -21,6 +21,7 @@
 
 import urlparse
 import json
+import sys
 from zope.interface import implements
 from twisted.web.iweb import IBodyProducer
 from client3420 import Agent, ResponseDone
@@ -80,8 +81,6 @@ class RPCPoller(object):
     
     def _startCall(self):
         self._stopCall()
-        #if self.currentlyAsking:
-            #return # ask() will _startCall when it finishes
         if self.askInterval:
             self.askCall = reactor.callLater(self.askInterval, self.ask)
         else:
@@ -111,6 +110,7 @@ class RPCPoller(object):
             self.currentlyAsking = False
             if failure.check(ServerMessage):
                 self.root.runCallback('msg', failure.getErrorMessage())
+            
             self.root._failure()
             self._startCall()
         def errback_delay(x): reactor.callLater(0, errback, x)
@@ -219,6 +219,11 @@ class LongPoller(object):
         try:
             result = RPCPoller.parse(data)
         except ValueError:
+            self._request()
+            return
+        except ServerMessage:
+            exctype, value = sys.exc_info()[:2]
+            self.root.runCallback('msg', str(value))
             self._request()
             return
         
