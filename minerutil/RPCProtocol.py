@@ -80,8 +80,8 @@ class RPCPoller(object):
     
     def _startCall(self):
         self._stopCall()
-        if self.currentlyAsking:
-            return # ask() will _startCall when it finishes
+        #if self.currentlyAsking:
+            #return # ask() will _startCall when it finishes
         if self.askInterval:
             self.askCall = reactor.callLater(self.askInterval, self.ask)
         else:
@@ -113,7 +113,8 @@ class RPCPoller(object):
                 self.root.runCallback('msg', failure.getErrorMessage())
             self.root._failure()
             self._startCall()
-        d.addErrback(errback)
+        def errback_delay(x): reactor.callLater(0, errback, x)
+        d.addErrback(errback_delay)
         
         def callback(x):
             if not self.currentlyAsking:
@@ -302,7 +303,7 @@ class RPCClient(ClientBase):
         return d
     
     def useAskrate(self, variable):
-        defaults = {'askrate': 10, 'retryrate': 15, 'lpaskrate': 0}
+        defaults = {'askrate': 999, 'retryrate': 15, 'lpaskrate': 0}
         try:
             askrate = int(self.params[variable])
         except (KeyError, ValueError):
