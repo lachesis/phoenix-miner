@@ -82,7 +82,10 @@ class QueueReader(object):
         """
         # Tell the other thread to exit cleanly.
         while not self.dataQueue.empty():
-            self.dataQueue.get(False)
+            try:
+                self.dataQueue.get(False)
+            except Empty:
+                pass
         self.dataQueue.put(StopIteration())
     
     def _ranExecution(self, dt, nr):
