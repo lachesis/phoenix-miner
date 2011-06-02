@@ -66,7 +66,6 @@ class WorkQueue(object):
         self.currentUnit = None
         self.block = ''
         self.lastBlock = None
-        self.idle = True
         
         # This is set externally. Not the best practice, but it can be changed
         # in the future.
@@ -105,7 +104,6 @@ class WorkQueue(object):
             self.logger.reportDebug("New block (WorkQueue)")
         
         #clear the idle flag since we just added work to queue
-        self.idle = False
         self.miner.reportIdle(False)
         
         #add new WorkUnit to queue
@@ -201,15 +199,14 @@ class WorkQueue(object):
             #if the queue is empty
             else:
                 
-                #if there isn't a pending request for more work send one
+                #request more work
                 self.miner.connection.requestWork()
                  
                 #display a message if the miner is idle
-                if not self.idle:
+                if not self.miner.idle:
                     self.logger.reportRate(0, False)
                     self.logger.log("Warning: work queue empty, miner is idle")
                     self.miner.reportIdle(True)
-                    self.idle = True
                 
                 #set up and return deferred
                 df = defer.Deferred()

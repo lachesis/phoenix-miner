@@ -94,6 +94,7 @@ class RPCPoller(object):
                 pass
             self.askCall = None
     
+
     def ask(self):
         """Run a getwork request immediately."""
         
@@ -132,6 +133,16 @@ class RPCPoller(object):
         # little bit later (with no artificial delay)
         def callback_delay(x): reactor.callLater(0, callback, x)
         d.addCallback(callback_delay)
+        
+        #since i can't fix the damn idle bug this workaround will have to do
+        #this doesn't need to be cancelled, since it will just throw an
+        #alreadycalled error and silently pass
+        def idleFix(x):
+            try:
+                x.errback(failure.Failure())
+            except: pass
+        
+        reactor.callLater(30, idleFix, d)
     
     @defer.inlineCallbacks
     def call(self, method, params=[]):
@@ -316,6 +327,10 @@ class RPCClient(ClientBase):
         self.poller.setInterval(askrate)
     
     def handleWork(self, work, pushed=False):
+        
+        if work is None:
+            return;
+        
         if not self.saidConnected:
             self.saidConnected = True
             self.runCallback('connect')
