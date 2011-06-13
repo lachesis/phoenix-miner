@@ -92,6 +92,8 @@ class RPCPoller(object):
                 self.askCall.cancel()
             except (error.AlreadyCancelled, error.AlreadyCalled):
                 pass
+            except:
+                pass
             self.askCall = None
     
 
@@ -142,7 +144,7 @@ class RPCPoller(object):
                 x.errback(failure.Failure())
             except: pass
         
-        reactor.callLater(30, idleFix, d)
+        reactor.callLater(15, idleFix, d)
     
     @defer.inlineCallbacks
     def call(self, method, params=[]):
@@ -369,11 +371,11 @@ class RPCClient(ClientBase):
         if longpoll:
             lpParsed = urlparse.urlparse(longpoll[0])
             urlParsed = urlparse.urlparse(self.url)
-            lpURL = '%s://%s:%d%s' % (
+            lpURL = '%s://%s:%d%s%s' % (
                 lpParsed.scheme or urlParsed.scheme,
                 lpParsed.hostname or urlParsed.hostname,
                 (lpParsed.port if lpParsed.hostname else urlParsed.port) or 80,
-                lpParsed.path)
+                lpParsed.path, '?' + lpParsed.query if lpParsed.query else '')
             if self.longPoller and self.longPoller.url != lpURL:
                 self.longPoller.stop()
                 self.longPoller = None

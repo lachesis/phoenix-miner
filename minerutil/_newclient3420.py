@@ -1332,10 +1332,14 @@ class HTTP11ClientProtocol(Protocol):
             # that Deferred.
             self._state = 'TRANSMITTING_AFTER_RECEIVING_RESPONSE'
             self._responseDeferred.chainDeferred(self._finishedRequest)
-
-        reason = ConnectionDone("synthetic!")
-        connection = self._parser.connHeaders.getRawHeaders('Connection')
-        keepalive = connection and connection[0].lower() == 'keep-alive'
+    
+        if self._parser is not None:
+            reason = ConnectionDone("synthetic!")
+            connection = self._parser.connHeaders.getRawHeaders('Connection')
+            keepalive = connection and connection[0].lower() == 'keep-alive'
+        else:
+            keepalive = False
+            
         if self.persistent and keepalive:
             self._disconnectParser(Failure(reason))
         else:

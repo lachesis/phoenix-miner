@@ -636,8 +636,8 @@ class Agent(object):
     @since: 9.0
     """
     _protocol = HTTP11ClientProtocol
-    #this should be 2, but for debug i'm going to remove this limit for now
-    maxConnections = 100 # RFC 2616: A single-user client SHOULD NOT
+    #this should be 2, but for debug i'm going to set this higher
+    maxConnections = 10 # RFC 2616: A single-user client SHOULD NOT
                        # maintain more than 2 connections with any
                        # server or proxy.
 
